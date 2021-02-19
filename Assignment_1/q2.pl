@@ -13,12 +13,25 @@
 %   on(A,C) :- clear(A), clear(C), C \= table, on(A, B)
 %   on(A,table) :- clear(A), on(A,B)
 
-%D
-  on(a,b)
-  on(b,table)
-  on(c,table)
-  clear(a)
-  clear(c)
+% D
 
-  on(A,C) :- clear(A), clear(C), C \= table, on(A, B)
-  on(A,table) :- clear(A), on(A,B)
+on(a,b).
+on(b,table).
+on(c,table).
+clear(a).
+clear(c).
+ 
+on(X, Y) :- clear(X), clear(Y), on(X, Z), neq_table(Y), format("move ~w from ~w to ~w ~n", [X, Y, Z]).
+% on(A,C) :- clear(A), clear(C), on(A,_), C \= table. 
+ 
+clear(C) :- clear(A), on(A, Z), neq_table(C),format("move ~w from ~w to the table ~n", [A, Z]) .
+%clear(C) :- clear(A), C \= table, on(A,_).
+ 
+on(A,table) :- clear(A), on(A, Z), neq_table(C), format("move ~w from ~w to the table ~n", [A, Z]) .
+neq_table(X) :- X \= table.
+
+
+%
+% My program is not printing for some reason???
+% what conditions will generate a false output?
+%
