@@ -15,23 +15,22 @@
 
 % D
 
+% initial state
 on(a,b).
 on(b,table).
 on(c,table).
 clear(a).
 clear(c).
  
+
+% discovered format function at https://stackoverflow.com/questions/34635689/output-formatting-in-prolog
+% Block X is on Block Y provided that X is clear, Y is clear, Y is on some block Z, and Y is not the table
 on(X, Y) :- clear(X), clear(Y), on(X, Z), neq_table(Y), format("move ~w from ~w to ~w ~n", [X, Y, Z]).
-% on(A,C) :- clear(A), clear(C), on(A,_), C \= table. 
  
+% Block C is clear provided that A is clear, A is on some block X, and C is not the table
 clear(C) :- clear(A), on(A, Z), neq_table(C),format("move ~w from ~w to the table ~n", [A, Z]) .
-%clear(C) :- clear(A), C \= table, on(A,_).
  
+% Block C is clear provided that A is clear, A is on some block X, and C is not the table
 on(A,table) :- clear(A), on(A, Z), neq_table(C), format("move ~w from ~w to the table ~n", [A, Z]) .
 neq_table(X) :- X \= table.
 
-
-%
-% My program is not printing for some reason???
-% what conditions will generate a false output?
-%
