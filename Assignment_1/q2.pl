@@ -31,6 +31,8 @@ on(X, Y) :- clear(X), clear(Y), on(X, Z), neq_table(Y), format("move ~w from ~w 
 clear(C) :- clear(A), on(A, Z), neq_table(C),format("move ~w from ~w to the table ~n", [A, Z]) .
  
 % Block C is clear provided that A is clear, A is on some block X, and C is not the table
-on(A,table) :- clear(A), on(A, Z), neq_table(C), format("move ~w from ~w to the table ~n", [A, Z]) .
+on(A,table) :- clear(A), on(A, Z), neq_table(C), format("move ~w from ~w to the table ~n", [A, Z]).
+
+% X is not the table 
 neq_table(X) :- X \= table.
 
