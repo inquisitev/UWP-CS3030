@@ -8,7 +8,8 @@ import itertools
 class PuzzleState:
     BLANK = -1
     BOARD_SIZE = 3
-    VALID_TILE_VALUE_RANGE = range(-1, 8)
+    VALID_TILE_VALUE_RANGE = list(range(1, 9)) + [-1]
+    print(VALID_TILE_VALUE_RANGE)
 
     # The state is represented by a list of lists.
     def __init__(self, rows: List[List[int]]):
@@ -40,6 +41,9 @@ class PuzzleState:
         ]
 
         return '\n'.join(out)
+
+    def __hash__(self):
+        return hash(str(self))
 
     @property
     def rows(self):
@@ -104,47 +108,65 @@ class SearchNode:
     def __init__(self, state: PuzzleState):
         self._puzzle_state = state
 
+    @property
+    def state(self):
+        return self._puzzle_state
+
     def neighbors(self):
         state = self._puzzle_state
         blank = state.get_blank_node()
         neighbors = []
-        if 0 <= blank[0] + 1 <= self._puzzle_state.BOARD_SIZE:
-            new_state = self._puzzle_state.copy()
-            if new_state.can_swap_with_blank((blank[0] + 1, blank[1])):
-                new_state.swap_with_blank((blank[0] + 1, blank[1]))
-                neighbors.append(new_state)
 
-        if 0 <= blank[1] + 1 <= self._puzzle_state.BOARD_SIZE:
-            new_state = self._puzzle_state.copy()
-            if new_state.can_swap_with_blank((blank[0], blank[1] + 1)):
-                new_state.swap_with_blank((blank[0], blank[1] + 1))
-                neighbors.append(new_state)
+        new_state = self._puzzle_state.copy()
+        if new_state.can_swap_with_blank((blank[0] + 1, blank[1])):
+            new_state.swap_with_blank((blank[0] + 1, blank[1]))
+            neighbors.append(new_state)
 
-        if 0 <= blank[0] - 1 <= self._puzzle_state.BOARD_SIZE:
-            new_state = self._puzzle_state.copy()
-            if new_state.can_swap_with_blank((blank[0] - 1, blank[1])):
-                new_state.swap_with_blank((blank[0] - 1, blank[1]))
-                neighbors.append(new_state)
+        new_state = self._puzzle_state.copy()
+        if new_state.can_swap_with_blank((blank[0], blank[1] + 1)):
+            new_state.swap_with_blank((blank[0], blank[1] + 1))
+            neighbors.append(new_state)
 
-        if 0 <= blank[1] - 1 <= self._puzzle_state.BOARD_SIZE:
-            new_state = self._puzzle_state.copy()
-            if new_state.can_swap_with_blank((blank[0], blank[1] - 1)):
-                new_state.swap_with_blank((blank[0], blank[1] - 1))
-                neighbors.append(new_state)
+        new_state = self._puzzle_state.copy()
+        if new_state.can_swap_with_blank((blank[0] - 1, blank[1])):
+
+            new_state.swap_with_blank((blank[0] - 1, blank[1]))
+
+            neighbors.append(new_state)
+
+        new_state = self._puzzle_state.copy()
+        if new_state.can_swap_with_blank((blank[0], blank[1] - 1)):
+            new_state.swap_with_blank((blank[0], blank[1] - 1))
+            neighbors.append(new_state)
+
 
         return neighbors
 
 
-ps = PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
-sn = SearchNode(ps)
-n = sn.neighbors()
-for ne in n:
-    for m in SearchNode(ne).neighbors():
-        print(m)
+def breadth_first_search(start, goal):
+    mfront = [start]
+    parents = {}
+
+    def bfs(front, goal, parents):
+        node = front.pop()
+        if not node == goal:
+            neighbors = [cNode for cNode in SearchNode(node).neighbors()]
+            if neighbors:
+                front = neighbors + front
+                for neighbor in neighbors:
+                    if neighbor not in parents:
+                        parents[neighbor] = node
+                bfs(front, goal, parents)
 
 
-def breadth_first_search():
-    pass
+    bfs(mfront, goal, parents)
+
+    print(goal)
+    node = parents[goal]
+    while node != start:
+        print(node)
+        node = parents[node]
+    print(start)
 
 
 def iterative_deepening_depth_first_search():
@@ -157,3 +179,17 @@ def a_star_search():
 
 def simulated_annealing():
     pass
+
+
+problem_1 = {
+    "start": PuzzleState([[1, 2, 3], [4, 5, 6], [-1,7,  8 ]]),
+    "goal": PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
+}
+problem_2 = {
+    "start": PuzzleState([[1, 2, 3], [4,-1, 6], [7,  5, 8 ]]),
+    "goal": PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
+}
+
+breadth_first_search(*problem_1.values())
+breadth_first_search(*problem_2.values())
+
