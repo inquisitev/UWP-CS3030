@@ -166,16 +166,33 @@ def breadth_first_search(start, goal):
     print(start)
 
 
-def iterative_deepening_depth_first_search():
-    pass
+def iterative_deepening_depth_first_search(start, goal):
+    mdepth = 1
 
+    def dldfs(front, goal, depth, max_depth ):
+        depth = depth + 1
+        print(depth)
+        if len(front) == 0:
+            return False
+        else:
+            node = front.pop()
+            if node == goal:
+                return True
+            elif depth < max_depth:
+                front = front + [cNode for cNode in SearchNode(node).neighbors()]
+                return dldfs(front, goal, depth, max_depth)
+
+    found = False
+    current_max_depth = 2
+    while not found:
+        mfront = [start]
+        found = dldfs(mfront, goal, 1, current_max_depth)
+        print(goal in mfront)
+        current_max_depth += 1
 
 def a_star_search():
     pass
 
-
-def simulated_annealing():
-    pass
 
 
 problems = [
@@ -189,5 +206,8 @@ problems = [
     }
 ]
 
-for problem in problems:
-    breadth_first_search(*problem)
+if __name__ == '__main__':
+
+    for problem in problems:
+        #breadth_first_search(*problem)
+        iterative_deepening_depth_first_search(*problem.values())
