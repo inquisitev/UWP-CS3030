@@ -129,7 +129,6 @@ class SearchNode:
 
         new_state = self._puzzle_state.copy()
         if new_state.can_swap_with_blank((blank[0] - 1, blank[1])):
-
             new_state.swap_with_blank((blank[0] - 1, blank[1]))
 
             neighbors.append(new_state)
@@ -138,7 +137,6 @@ class SearchNode:
         if new_state.can_swap_with_blank((blank[0], blank[1] - 1)):
             new_state.swap_with_blank((blank[0], blank[1] - 1))
             neighbors.append(new_state)
-
 
         return neighbors
 
@@ -157,7 +155,6 @@ def breadth_first_search(start, goal):
                     if neighbor not in parents:
                         parents[neighbor] = node
                 bfs(front, goal, parents)
-
 
     bfs(mfront, goal, parents)
 
@@ -181,15 +178,16 @@ def simulated_annealing():
     pass
 
 
-problem_1 = {
-    "start": PuzzleState([[1, 2, 3], [4, 5, 6], [-1,7,  8 ]]),
-    "goal": PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
-}
-problem_2 = {
-    "start": PuzzleState([[1, 2, 3], [4,-1, 6], [7,  5, 8 ]]),
-    "goal": PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
-}
+problems = [
+    {
+        "start": PuzzleState([[1, 2, 3], [4, 5, 6], [-1, 7, 8]]),
+        "goal": PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
+    },
+    {
+        "start": PuzzleState([[1, 2, 3], [4, -1, 6], [7, 5, 8]]),
+        "goal": PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
+    }
+]
 
-breadth_first_search(*problem_1.values())
-breadth_first_search(*problem_2.values())
-
+for problem in problems:
+    breadth_first_search(*problem)
