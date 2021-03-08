@@ -168,27 +168,39 @@ def breadth_first_search(start, goal):
 
 def iterative_deepening_depth_first_search(start, goal):
     mdepth = 1
-
-    def dldfs(front, goal, depth, max_depth ):
+    parents = {}
+    def dldfs(front, cgoal, depth, max_depth, cvisited):
         depth = depth + 1
-        print(depth)
         if len(front) == 0:
             return False
         else:
             node = front.pop()
-            if node == goal:
+            if node == cgoal:
                 return True
             elif depth < max_depth:
-                front = front + [cNode for cNode in SearchNode(node).neighbors()]
-                return dldfs(front, goal, depth, max_depth)
+                visited.append(node)
+                for c in SearchNode(node).neighbors():
+                    if c not in cvisited:
+                        front.append(c)
+                        if not c in parents:
+                            parents[c] = node
+                return dldfs(front, cgoal, depth, max_depth, cvisited)
 
     found = False
     current_max_depth = 2
     while not found:
         mfront = [start]
-        found = dldfs(mfront, goal, 1, current_max_depth)
-        print(goal in mfront)
+        visited = []
+        found = dldfs(mfront, goal, 1, current_max_depth, visited)
+        #print(goal in mfront)
         current_max_depth += 1
+
+    print(goal)
+    node = parents[goal]
+    while node != start:
+        print(node)
+        node = parents[node]
+    print(start)
 
 def a_star_search():
     pass
