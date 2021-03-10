@@ -5,24 +5,36 @@ import math
 class BoardState:
     BOARD_SIZE = 8
 
-    def __init__(self,):
-        self._board = [[False for _ in range(self.BOARD_SIZE)] for _ in range(self.BOARD_SIZE)]
+    def __init__(self, ):
 
         self._occupied_spaces = []
 
-        while len(self._occupied_spaces) < self.BOARD_SIZE:
-            new_space = random.randint(0,self.BOARD_SIZE - 1), random.randint(0,self.BOARD_SIZE - 1),
-            if new_space not in self._occupied_spaces:
-                self._occupied_spaces.append(new_space)
+    def move_queen(self, loc_from, loc_to):
+        if loc_from not in self._occupied_spaces:
+            raise Exception("No queen there")
+        self._occupied_spaces.remove(loc_from)
+        self._occupied_spaces.append(loc_to)
 
-        for occupied_space in self._occupied_spaces:
-            self.populate_space(*occupied_space)
+
+    #Simplify this problem by acknowleging that every column will have a queen
+    def random_fill(self):
+
+        for i in range(0, self.BOARD_SIZE):
+            self._occupied_spaces.append((random.randint(0, self.BOARD_SIZE - 1), i))
+
+    def neighbors(self):
+        occupied_rows = []
+        for row,col in self._occupied_spaces:
+            if row not in occupied_rows:
+                occupied_rows.append(row)
+
+
+
+
 
     def copy(self):
         new_board = BoardState()
-        for i, j in itertools.product(range(self.BOARD_SIZE), range(self.BOARD_SIZE)):
-            if self.get_space(i, j):
-                new_board.populate_space(i, j)
+        new_board._occupied_spaces = [x for x in self._occupied_spaces]
         return new_board
 
     def get_space(self, row, col):
@@ -30,7 +42,7 @@ class BoardState:
             raise Exception("Bad Row")
         if not 0 <= col <= self.BOARD_SIZE:
             raise Exception("Bad Col")
-        return self._board[row][col]
+        return (row, col) in self._occupied_spaces
 
     def populate_space(self, row, col):
         if not 0 <= row <= self.BOARD_SIZE:
@@ -38,7 +50,7 @@ class BoardState:
         if not 0 <= col <= self.BOARD_SIZE:
             raise Exception("Bad Col")
 
-        self._board[row][col] = True
+        self._occupied_spaces.append((row, col))
 
     def clear_space(self, row, col):
         if not 0 <= row <= self.BOARD_SIZE:
@@ -46,15 +58,16 @@ class BoardState:
         if not 0 <= col <= self.BOARD_SIZE:
             raise Exception("Bad Col")
 
-        self._board[row][col] = True
+        self._occupied_spaces.remove((row, col))
 
-    def _same_row(self,new, existing):
+    def _same_row(self, new, existing):
         return new[0] == existing[0]
 
-    def _same_col(self,new, existing):
+    def _same_col(self, new, existing):
         return new[1] == existing[1]
 
         # Check that the difference in the x,y is the same, implying square shift, implying same diagnol.
+
     def _same_diag(self, new, existing):
         return abs(new[0] - existing[0]) == abs(new[1] - existing[1])
 
@@ -72,20 +85,15 @@ class BoardState:
                         threat += 1
         return threat
 
-
-
-
     def __str__(self):
         rows = []
-        for row in self._board:
-            row_str = "".join(["[Q]" if x else "[ ]" for x in row])
+        for row in range(0, self.BOARD_SIZE):
+            row_str = "".join(
+                ["[Q]" if (row, col) in self._occupied_spaces else "[ ]" for col in range(0, self.BOARD_SIZE)])
             rows.append(row_str)
+        rows.append(f"Threat Level: {self.get_threat_level()}")
+
         return '\n'.join(rows)
-
-
-
-
-
 
 
 # dont generate new random each time. Modify current state then select the best one or a possible worst one
@@ -102,16 +110,16 @@ def simulated_annealing(start):
         new_h = rand_neighb.get_threat_level()
         old_h = prev_state.get_threat_level()
 
-        dif_weight =  new_h - old_h
+        dif_weight = new_h - old_h
         sol_better = new_h < old_h
-        accept_worse = random.uniform(0,1) > math.exp(-dif_weight/ trial)
+        accept_worse = random.uniform(0, 1) > math.exp(-dif_weight / trial)
         if sol_better or accept_worse:
             state = rand_neighb
             print(rand_neighb)
             print()
 
 
-
 if __name__ == '__main__':
     bs = BoardState()
-    simulated_annealing(bs)
+    bs.random_fill()
+    print(bs)
