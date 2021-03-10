@@ -103,6 +103,16 @@ class PuzzleState:
         new_state = [[x for x in row] for row in self._rows]
         return PuzzleState(new_state)
 
+    # Lower weight means better option
+    def get_heuristic_weight(self, goal):
+        out_of_place_tiles = 0
+        board_range = range(self.BOARD_SIZE)
+        for i, j in itertools.product(board_range, board_range):
+            if self.get_tile(i, j) != self.BLANK and self.get_tile(i, j) != goal.get_tile(i, j):
+                out_of_place_tiles += 1
+
+        return out_of_place_tiles
+
 
 class SearchNode:
     def __init__(self, state: PuzzleState):
@@ -169,6 +179,7 @@ def breadth_first_search(start, goal):
 def iterative_deepening_depth_first_search(start, goal):
     mdepth = 1
     parents = {}
+
     def dldfs(front, cgoal, depth, max_depth, cvisited):
         depth = depth + 1
         if len(front) == 0:
@@ -192,7 +203,7 @@ def iterative_deepening_depth_first_search(start, goal):
         mfront = [start]
         visited = []
         found = dldfs(mfront, goal, 1, current_max_depth, visited)
-        #print(goal in mfront)
+        # print(goal in mfront)
         current_max_depth += 1
 
     print(goal)
@@ -202,18 +213,51 @@ def iterative_deepening_depth_first_search(start, goal):
         node = parents[node]
     print(start)
 
-def a_star_search():
-    pass
 
+def a_star_search(start, goal):
+    front = [start]
+    visited = []
+    parents = {}
+
+    def a_star(front, visited, goal):
+        if len(front) == 0:
+            return False
+        node = front.pop()
+        if node != goal:
+            visited.append(node),
+            for neighbor in SearchNode(node).neighbors():
+                if neighbor not in visited:
+                    front.append(neighbor)
+                    if neighbor not in parents:
+                        parents[neighbor] = node
+
+            front.sort(key=lambda x: x.get_heuristic_weight(goal), reverse=True)
+            a_star(front, visited, goal)
+        else:
+            return True
+
+    a_star(front,visited,goal)
+
+    print(goal)
+    node = parents[goal]
+    while node != start:
+        print(node)
+        node = parents[node]
+    print(start)
 
 
 problems = [
     {
-        "start": PuzzleState([[1, 2, 3], [4, 5, 6], [-1, 7, 8]]),
+        "start": PuzzleState([[1, 2,-1,], [4, 3,  6], [7, 5, 8]]),
         "goal": PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
     },
     {
-        "start": PuzzleState([[1, 2, 3], [4, -1, 6], [7, 5, 8]]),
+        "start": PuzzleState([[1, 2, 3], [4, 5, 6], [-1, 7, 8]]),
+        "goal": PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
+    },
+
+    {
+        "start": PuzzleState([[-1, 2, 3], [4, 1, 6], [7, 5, 8]]),
         "goal": PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
     }
 ]
@@ -221,5 +265,8 @@ problems = [
 if __name__ == '__main__':
 
     for problem in problems:
-        #breadth_first_search(*problem)
-        iterative_deepening_depth_first_search(*problem.values())
+
+        # breadth_first_search(*problem)
+        #iterative_deepening_depth_first_search(*problem.values())
+        a_star_search(*problem.values())
+
