@@ -1,5 +1,5 @@
 from typing import List, Tuple
-import itertools
+import itertools, time
 
 
 # Puzzle state represents a 3 by 3 board of spaces.
@@ -89,7 +89,7 @@ class PuzzleState:
             self.in_board_coords(blank_x, blank_y + 1) == tile_pos,
             self.in_board_coords(blank_x - 1, blank_y) == tile_pos,
             self.in_board_coords(blank_x, blank_y - 1) == tile_pos,
-        ]
+            ]
 
         return any(allowed_moves)
 
@@ -330,13 +330,53 @@ def vertical_path_to_horizontal(iterator):
     return '\n'.join(printable_rows)
 
 
-def time_n_print_solve():
-    print(vertical_path_to_horizontal(breadth_first_search(*problem.values())))
+# solve the search problem, print out revelent data regaurding the search,
+def time_n_print_solve(label, func, args):
+
+    tic = time.perf_counter()
+    solution = vertical_path_to_horizontal(func(*args))
+    toc = time.perf_counter()
+
+    out = []
+    out.append('-'*180)
+    out.append(f"Searching via {label} took {toc - tic:0.4f} seconds")
+    out.append(f"Start{ ' ' * 15} Goal")
+    out.append(vertical_path_to_horizontal(args))
+    out.append('')
+    out.append("Solution")
+    out.append(solution)
+
+    out.append('-'*180)
+    return toc - tic, '\n'.join(out)
+
+
+
 
 
 if __name__ == '__main__':
 
+    algs = {"BFS": breadth_first_search, "IDDFS": iterative_deepening_depth_first_search, "A*": a_star_search}
+
+    times = {label: [] for label in algs.keys()}
+    results = {label: [] for label in algs.keys()}
+
     for problem in problems:
-        print(vertical_path_to_horizontal(breadth_first_search(*problem.values())))
-        vertical_path_to_horizontal(iterative_deepening_depth_first_search(*problem.values()))
-        vertical_path_to_horizontal(a_star_search(*problem.values()))
+        for label, algo in algs.items():
+            result = time_n_print_solve(label, algo, problem.values())
+            times[label].append(result[0])
+            results[label].append(result[1])
+
+        break
+
+    for label in algs.keys():
+        with open(f"{label}_results.txt", 'w+') as out_file:
+            for result in results[label]:
+                out_file.write(str(result))
+                out_file.write("\n\n\n")
+
+    with open("times.txt", 'w+') as out_file:
+        for label, time_vals in times.items():
+            avg_time = sum(time_vals)/len(time_vals)
+            print(f"{label} -> {str(avg_time)}")
+            out_file.write(f"{label} -> {str(avg_time)}\n")
+
