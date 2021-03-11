@@ -30,7 +30,7 @@ class PuzzleState:
     def __str__(self):
 
         def val_or_b(row, col):
-            return self.rows[row][col] if self.rows[row][col] != self.BLANK else "B"
+            return self._rows[row][col] if self._rows[row][col] != self.BLANK else "B"
 
         out = [
             "+--------------+",
@@ -154,19 +154,27 @@ class SearchNode:
 def breadth_first_search(start, goal):
     mfront = [start]
     parents = {}
+    visited = []
 
-    def bfs(front, goal, parents):
+    def bfs(front, cgoal, cvisited):
+
         node = front.pop()
-        if not node == goal:
-            neighbors = [cNode for cNode in SearchNode(node).neighbors()]
-            if neighbors:
-                front = neighbors + front
-                for neighbor in neighbors:
-                    if neighbor not in parents:
-                        parents[neighbor] = node
-                bfs(front, goal, parents)
+        print(node)
+        if node == cgoal:
+            print("GOAL REACHED")
+            return True
+        else:
+            neighbors = SearchNode(node).neighbors()
+            front = [x for x in (neighbors + front) if x not in visited]
+            for c in neighbors:
+                if c not in parents:
+                    parents[c] = node
+            cvisited.append(node)
 
-    bfs(mfront, goal, parents)
+            return bfs(front, cgoal, cvisited)
+
+
+    bfs(mfront, goal, visited)
 
     print(goal)
     node = parents[goal]
@@ -236,7 +244,7 @@ def a_star_search(start, goal):
         else:
             return True
 
-    a_star(front,visited,goal)
+    a_star(front, visited, goal)
 
     print(goal)
     node = parents[goal]
@@ -248,25 +256,25 @@ def a_star_search(start, goal):
 
 problems = [
     {
-        "start": PuzzleState([[1, 2,-1,], [4, 3,  6], [7, 5, 8]]),
-        "goal": PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
-    },
-    {
         "start": PuzzleState([[1, 2, 3], [4, 5, 6], [-1, 7, 8]]),
         "goal": PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
     },
 
+
     {
-        "start": PuzzleState([[-1, 2, 3], [4, 1, 6], [7, 5, 8]]),
+        "start": PuzzleState([ [1, 2, 3], [4, -1, 5],[6, 7, 8]]),
         "goal": PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
-    }
+    },
+
 ]
 
 if __name__ == '__main__':
 
+    f = PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]]) == PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
+    print(f)
     for problem in problems:
 
-        # breadth_first_search(*problem)
+        breadth_first_search(*problem.values())
         #iterative_deepening_depth_first_search(*problem.values())
-        a_star_search(*problem.values())
+        #a_star_search(*problem.values())
 
