@@ -156,40 +156,44 @@ def breadth_first_search(start, goal):
     parents = {}
     visited = []
 
-    def bfs(front, cgoal, cvisited):
+    def bfs(front, cgoal):
+
+        if len(front) == 0:
+            return False
 
         node = front.pop()
-        print(node)
         if node == cgoal:
-            print("GOAL REACHED")
             return True
         else:
-            neighbors = SearchNode(node).neighbors()
-            front = [x for x in (neighbors + front) if x not in visited]
+            neighbors = []
+            for x in SearchNode(node).neighbors():
+                was_visited = x in visited
+                if not was_visited:
+                    neighbors.append(x)
+                    visited.append(x)
+
+            front = neighbors + front
             for c in neighbors:
                 if c not in parents:
                     parents[c] = node
-            cvisited.append(node)
 
-            return bfs(front, cgoal, cvisited)
+            bfs(front, cgoal)
 
 
-    bfs(mfront, goal, visited)
+    bfs(mfront, goal)
 
-    print(goal)
-    node = parents[goal]
-    while node != start:
-        print(node)
-        node = parents[node]
-    print(start)
+    #print(goal)
+    #node = parents[goal]
+    #while node != start:
+    #    print(node)
+    #    node = parents[node]
+    #print(start)
 
 
 def iterative_deepening_depth_first_search(start, goal):
-    mdepth = 1
     parents = {}
 
     def dldfs(front, cgoal, depth, max_depth, cvisited):
-        depth = depth + 1
         if len(front) == 0:
             return False
         else:
@@ -197,13 +201,13 @@ def iterative_deepening_depth_first_search(start, goal):
             if node == cgoal:
                 return True
             elif depth < max_depth:
-                visited.append(node)
                 for c in SearchNode(node).neighbors():
                     if c not in cvisited:
                         front.append(c)
+                        visited.append(c)
                         if not c in parents:
                             parents[c] = node
-                return dldfs(front, cgoal, depth, max_depth, cvisited)
+                return dldfs(front, cgoal, depth + 1, max_depth, cvisited)
 
     found = False
     current_max_depth = 2
@@ -214,17 +218,17 @@ def iterative_deepening_depth_first_search(start, goal):
         # print(goal in mfront)
         current_max_depth += 1
 
-    print(goal)
-    node = parents[goal]
-    while node != start:
-        print(node)
-        node = parents[node]
-    print(start)
+    #print(goal)
+    #node = parents[goal]
+    #while node != start:
+    #    print(node)
+    #    node = parents[node]
+    #print(start)
 
 
 def a_star_search(start, goal):
     front = [start]
-    visited = []
+    visited = [start]
     parents = {}
 
     def a_star(front, visited, goal):
@@ -246,12 +250,12 @@ def a_star_search(start, goal):
 
     a_star(front, visited, goal)
 
-    print(goal)
-    node = parents[goal]
-    while node != start:
-        print(node)
-        node = parents[node]
-    print(start)
+    #print(goal)
+    #node = parents[goal]
+    #while node != start:
+    #    print(node)
+    #    node = parents[node]
+    #print(start)
 
 
 problems = [
@@ -262,19 +266,25 @@ problems = [
 
 
     {
-        "start": PuzzleState([ [1, 2, 3], [4, -1, 5],[6, 7, 8]]),
+        "start": PuzzleState([[1, 2, 6], [4, 5, 3 ], [-1, 7, 8]]),
         "goal": PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
     },
-
 ]
 
 if __name__ == '__main__':
 
-    f = PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]]) == PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
+    f = PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]]) in [ PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])]
     print(f)
     for problem in problems:
 
+        print("BFS Start")
         breadth_first_search(*problem.values())
-        #iterative_deepening_depth_first_search(*problem.values())
-        #a_star_search(*problem.values())
+        print("BFS Finish")
+
+        print("ITDFS Start")
+        iterative_deepening_depth_first_search(*problem.values())
+        print("ITDFS Finish")
+        print("A* Start")
+        a_star_search(*problem.values())
+        print("A* Stop")
 
