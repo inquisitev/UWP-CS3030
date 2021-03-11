@@ -52,7 +52,7 @@ class PuzzleState:
         return self._rows
 
     # two boards are equal provided that for every row and every column, the value of the row, col combo match
-    def __eq__(self, other :'PuzzleState') -> bool:
+    def __eq__(self, other: 'PuzzleState') -> bool:
 
         def tiles_are_equal(i: int, j: int) -> bool:
             return self.get_tile(i, j) == other.get_tile(i, j)
@@ -74,7 +74,7 @@ class PuzzleState:
         mrow, mcol = self.in_board_coords(row, col)
         return self._rows[mrow][mcol]
 
-    #set value of tile at row,col intersection
+    # set value of tile at row,col intersection
     def set_tile(self, row: int, col: int, val: int):
         mrow, mcol = self.in_board_coords(row, col)
         self._rows[mrow][mcol] = val
@@ -101,7 +101,7 @@ class PuzzleState:
         self.set_tile(tile_pos[0], tile_pos[1], self.BLANK)
 
     # get the position of the blank node
-    def get_blank_node(self) -> Tuple[int,int]:
+    def get_blank_node(self) -> Tuple[int, int]:
         for i in range(self.BOARD_SIZE):
             for j in range(self.BOARD_SIZE):
                 val = self._rows[i][j]
@@ -123,21 +123,20 @@ class PuzzleState:
 
         return out_of_place_tiles
 
+
 # A search node wraps the puzzle state to provide neighbor calculations.
 class SearchNode:
-
 
     def __init__(self, state: PuzzleState):
         self._puzzle_state = state
 
-    
     @property
-    #the current puzzle state of the search node
+    # the current puzzle state of the search node
     def state(self) -> PuzzleState:
         return self._puzzle_state
 
-    #compute a list of neighbors, Should always provide a list of four boards with the 
-    #blank tile in a position up, down, left, or right, by one space only
+    # compute a list of neighbors, Should always provide a list of four boards with the
+    # blank tile in a position up, down, left, or right, by one space only
     def neighbors(self) -> List[PuzzleState]:
         state = self._puzzle_state
         blank = state.get_blank_node()
@@ -166,53 +165,54 @@ class SearchNode:
 
         return neighbors
 
+
 # Search for goal using breadth first search, return a list of PuzzleStates starting with start and ending with goal
 def breadth_first_search(start: PuzzleState, goal: PuzzleState) -> List[PuzzleState]:
     mfront = [start]
     parents = {}
-    visited = []
+    visited = set()
+    pnode = None
 
     # inner recursive search function
     def bfs(front: PuzzleState, cgoal):
-
         node = front.pop()
-        if node == cgoal:
-            return True
-        else:
+
+        while node != goal:
             neighbors = [x for x in SearchNode(node).neighbors() if x not in visited]
+            neighbors.sort(key=lambda x: x.get_heuristic_weight(goal), reverse=True)
             if neighbors:
                 front = neighbors + front
                 for c in neighbors:
-                    visited.append(c)
+                    visited.add(c)
                     if c not in parents:
                         parents[c] = node
+            node = front.pop()
 
-                return bfs(front, cgoal)
-            else:
-                return False
+        return node
 
     res = bfs(mfront, goal)
 
-    path = []
+    if res:
+        path = []
 
-    path.append(goal)
-    node = parents[goal]
-    while node != start:
-       path.append(node)
-       node = parents[node]
-    path.append(start)
+        path.append(goal)
+        node = parents[goal]
+        while node != start:
+            path.append(node)
+            node = parents[node]
+        path.append(start)
 
-    return reversed(path)
+        return list(reversed(path))
 
 
 # using psuedo code from https://www.geeksforgeeks.org/iterative-deepening-searchids-iterative-deepening-depth-first-searchiddfs/
 
 # Use iterative deepening depth first search to find a path from start state to goal state
 # return the path taken to reach goal, or empty list if path does not exist.
-def iterative_deepening_depth_first_search(start: PuzzleState , goal: PuzzleState) -> List[PuzzleState]:
+def iterative_deepening_depth_first_search(start: PuzzleState, goal: PuzzleState) -> List[PuzzleState]:
     parents = {}
     visited = []
-    MAX_DEPTH = 2**12 # just a real big number...
+    MAX_DEPTH = 2 ** 12  # just a real big number...
 
     # depth limited search inner recursive function
     def dls(cstart: PuzzleState, cgoal: PuzzleState, climit: int):
@@ -225,7 +225,7 @@ def iterative_deepening_depth_first_search(start: PuzzleState , goal: PuzzleStat
             return False
 
         neighbors = SearchNode(cstart).neighbors()
-        #neighbors.sort(key=lambda x: x.get_heuristic_weight(goal))
+        neighbors.sort(key=lambda x: x.get_heuristic_weight(goal))
         for neighbor in neighbors:
             if neighbor not in parents:
                 parents[neighbor] = cstart
@@ -239,14 +239,13 @@ def iterative_deepening_depth_first_search(start: PuzzleState , goal: PuzzleStat
             found = True
             break
     if found:
-        path = []
-        path.append(goal)
+        path = [goal]
         node = parents[goal]
         while node != start:
-           path.append(node)
-           node = parents[node]
+            path.append(node)
+            node = parents[node]
         path.append(start)
-        return reversed(path)
+        return list(reversed(path))
     else:
         return []
 
@@ -275,12 +274,11 @@ def a_star_search(start, goal):
 
     a_star(front, visited, goal)
 
-    path = []
-    path.append(goal)
+    path = [goal]
     node = parents[goal]
     while node != start:
-       path.append(node)
-       node = parents[node]
+        path.append(node)
+        node = parents[node]
     path.append(start)
 
     return reversed(path)
@@ -301,30 +299,44 @@ problems = [
         "start": PuzzleState([[1, 2, 6], [-1, 7, 8], [4, 5, 3]]),
         "goal": PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
     },
-
+    #
     {
         "start": PuzzleState([[-1, 7, 8], [1, 2, 6], [4, 5, 3]]),
         "goal": PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
     },
 
     {
-        "start": PuzzleState([[-1, 5, 8], [1, 2, 6], [4, 7, 3]]),
+        "start": PuzzleState([[1, 8, 2], [-1, 4, 3], [7, 6, 5]]),
         "goal": PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
     },
 ]
 
+
+def vertical_path_to_horizontal(iterator):
+    rows = [[] for _ in range(5)]
+    board_num = 0
+    for board in iterator:
+        row = str(board).split('\n')
+        for i in range(len(row)):
+            rows[i].append(row[i])
+        board_num += 1
+
+    printable_rows = []
+    row_num = 0
+    for row in rows:
+        seperator = "  -> " if row_num == int(len(rows) / 2) else "     "
+        printable_rows.append(seperator.join(row))
+        row_num += 1
+    return '\n'.join(printable_rows)
+
+
+def time_n_print_solve():
+    print(vertical_path_to_horizontal(breadth_first_search(*problem.values())))
+
+
 if __name__ == '__main__':
 
-    f = PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]]) in [PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])]
-    print(f)
     for problem in problems:
-        print("BFS Start")
-        breadth_first_search(*problem.values())
-        print("BFS Finish")
-
-        print("ITDFS Start")
-        iterative_deepening_depth_first_search(*problem.values())
-        print("ITDFS Finish")
-        print("A* Start")
-        a_star_search(*problem.values())
-        print("A* Stop")
+        print(vertical_path_to_horizontal(breadth_first_search(*problem.values())))
+        vertical_path_to_horizontal(iterative_deepening_depth_first_search(*problem.values()))
+        vertical_path_to_horizontal(a_star_search(*problem.values()))
