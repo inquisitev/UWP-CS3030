@@ -9,7 +9,6 @@ class PuzzleState:
     BLANK = -1
     BOARD_SIZE = 3
     VALID_TILE_VALUE_RANGE = list(range(1, 9)) + [-1]
-    print(VALID_TILE_VALUE_RANGE)
 
     # The state is represented by a list of lists.
     def __init__(self, rows: List[List[int]]):
@@ -27,9 +26,10 @@ class PuzzleState:
                 else:
                     existing_vals.append(val)
 
+    # Print the current board in a nice 3x3 grid with a border
     def __str__(self):
 
-        def val_or_b(row, col):
+        def val_or_b(row: int, col: int) -> str:
             return self._rows[row][col] if self._rows[row][col] != self.BLANK else "B"
 
         out = [
@@ -42,16 +42,19 @@ class PuzzleState:
 
         return '\n'.join(out)
 
+    # serialize the board to allow usage of 'in' keyword when interacting with lists
     def __hash__(self):
         return hash(str(self))
 
     @property
+    # get the raw list of lists that describe the state of the board
     def rows(self):
         return self._rows
 
-    def __eq__(self, other):
+    # two boards are equal provided that for every row and every column, the value of the row, col combo match
+    def __eq__(self, other :'PuzzleState') -> bool:
 
-        def tiles_are_equal(i, j):
+        def tiles_are_equal(i: int, j: int) -> bool:
             return self.get_tile(i, j) == other.get_tile(i, j)
 
         b_range = range(self.BOARD_SIZE)
@@ -59,21 +62,25 @@ class PuzzleState:
         equalities = [tiles_are_equal(i, j) for i, j in itertools.product(b_range, b_range)]
         return all(equalities)
 
-    def in_board_coords(self, row, col):
+    # get the coordinates of a board after compensation for overflow. row `BOARD_SIZE + 1` should be row `0`
+    def in_board_coords(self, row: int, col: int) -> Tuple[int, int]:
 
         mrow = row % self.BOARD_SIZE
         mcol = col % self.BOARD_SIZE
         return mrow, mcol
 
-    def get_tile(self, row, col):
+    # get value of tile at row,col intersection
+    def get_tile(self, row: int, col: int) -> int:
         mrow, mcol = self.in_board_coords(row, col)
         return self._rows[mrow][mcol]
 
-    def set_tile(self, row, col, val):
+    #set value of tile at row,col intersection
+    def set_tile(self, row: int, col: int, val: int):
         mrow, mcol = self.in_board_coords(row, col)
         self._rows[mrow][mcol] = val
 
-    def can_swap_with_blank(self, tile_pos: Tuple[int, int]):
+    # check if tile_pos is neighbor of current blank node, true implying that swap is legal
+    def can_swap_with_blank(self, tile_pos: Tuple[int, int]) -> bool:
         tile_pos = self.in_board_coords(tile_pos[0], tile_pos[1])
         blank_x, blank_y = self.get_blank_node()
 
@@ -86,25 +93,28 @@ class PuzzleState:
 
         return any(allowed_moves)
 
-    def swap_with_blank(self, tile_pos: Tuple[int, int]):
+    # swap tile_pos with current blank position
+    def swap_with_blank(self, tile_pos: Tuple[int, int]) -> None:
         blank = self.get_blank_node()
         val = self.get_tile(tile_pos[0], tile_pos[1])
         self.set_tile(blank[0], blank[1], val)
         self.set_tile(tile_pos[0], tile_pos[1], self.BLANK)
 
-    def get_blank_node(self):
+    # get the position of the blank node
+    def get_blank_node(self) -> Tuple[int,int]:
         for i in range(self.BOARD_SIZE):
             for j in range(self.BOARD_SIZE):
                 val = self._rows[i][j]
                 if val == self.BLANK:
                     return i, j
 
-    def copy(self):
+    # create deep copy of the puzzel state
+    def copy(self) -> 'PuzzleState':
         new_state = [[x for x in row] for row in self._rows]
         return PuzzleState(new_state)
 
     # Lower weight means better option
-    def get_heuristic_weight(self, goal):
+    def get_heuristic_weight(self, goal: 'PuzzleState') -> int:
         out_of_place_tiles = 0
         board_range = range(self.BOARD_SIZE)
         for i, j in itertools.product(board_range, board_range):
@@ -113,16 +123,22 @@ class PuzzleState:
 
         return out_of_place_tiles
 
-
+# A search node wraps the puzzle state to provide neighbor calculations.
 class SearchNode:
+
+
     def __init__(self, state: PuzzleState):
         self._puzzle_state = state
 
+    
     @property
-    def state(self):
+    #the current puzzle state of the search node
+    def state(self) -> PuzzleState:
         return self._puzzle_state
 
-    def neighbors(self):
+    #compute a list of neighbors, Should always provide a list of four boards with the 
+    #blank tile in a position up, down, left, or right, by one space only
+    def neighbors(self) -> List[PuzzleState]:
         state = self._puzzle_state
         blank = state.get_blank_node()
         neighbors = []
@@ -150,14 +166,14 @@ class SearchNode:
 
         return neighbors
 
-
-def breadth_first_search(start, goal):
+# Search for goal using breadth first search, return a list of PuzzleStates starting with start and ending with goal
+def breadth_first_search(start: PuzzleState, goal: PuzzleState) -> List[PuzzleState]:
     mfront = [start]
     parents = {}
     visited = []
 
-    def bfs(front, cgoal):
-
+    # inner recursive search function
+    def bfs(front: PuzzleState, cgoal):
 
         node = front.pop()
         if node == cgoal:
@@ -171,27 +187,35 @@ def breadth_first_search(start, goal):
                     if c not in parents:
                         parents[c] = node
 
-                bfs(front, cgoal)
+                return bfs(front, cgoal)
+            else:
+                return False
+
+    res = bfs(mfront, goal)
+
+    path = []
+
+    path.append(goal)
+    node = parents[goal]
+    while node != start:
+       path.append(node)
+       node = parents[node]
+    path.append(start)
+
+    return reversed(path)
 
 
-    bfs(mfront, goal)
+# using psuedo code from https://www.geeksforgeeks.org/iterative-deepening-searchids-iterative-deepening-depth-first-searchiddfs/
 
-    #print(goal)
-    #node = parents[goal]
-    #while node != start:
-    #    print(node)
-    #    node = parents[node]
-    #print(start)
-
-
-
-#using psuedo code from https://www.geeksforgeeks.org/iterative-deepening-searchids-iterative-deepening-depth-first-searchiddfs/
-
-def iterative_deepening_depth_first_search(start, goal):
+# Use iterative deepening depth first search to find a path from start state to goal state
+# return the path taken to reach goal, or empty list if path does not exist.
+def iterative_deepening_depth_first_search(start: PuzzleState , goal: PuzzleState) -> List[PuzzleState]:
     parents = {}
     visited = []
+    MAX_DEPTH = 2**12 # just a real big number...
 
-    def dls(cstart, cgoal, climit):
+    # depth limited search inner recursive function
+    def dls(cstart: PuzzleState, cgoal: PuzzleState, climit: int):
 
         visited.append(cstart)
         if cstart == cgoal:
@@ -201,7 +225,7 @@ def iterative_deepening_depth_first_search(start, goal):
             return False
 
         neighbors = SearchNode(cstart).neighbors()
-        neighbors.sort(key=lambda x : x.get_heuristic_weight(goal))
+        #neighbors.sort(key=lambda x: x.get_heuristic_weight(goal))
         for neighbor in neighbors:
             if neighbor not in parents:
                 parents[neighbor] = cstart
@@ -210,21 +234,21 @@ def iterative_deepening_depth_first_search(start, goal):
                     return True
 
     found = False
-    for limit in range(0, 150000):
+    for limit in range(0, MAX_DEPTH):
         if dls(start, goal, limit):
             found = True
             break
     if found:
-        print(goal)
+        path = []
+        path.append(goal)
         node = parents[goal]
         while node != start:
-            print(node)
-            node = parents[node]
-        print(start)
-        return True
+           path.append(node)
+           node = parents[node]
+        path.append(start)
+        return reversed(path)
     else:
-        return  False
-
+        return []
 
 
 def a_star_search(start, goal):
@@ -251,12 +275,15 @@ def a_star_search(start, goal):
 
     a_star(front, visited, goal)
 
-    #print(goal)
-    #node = parents[goal]
-    #while node != start:
-    #    print(node)
-    #    node = parents[node]
-    #print(start)
+    path = []
+    path.append(goal)
+    node = parents[goal]
+    while node != start:
+       path.append(node)
+       node = parents[node]
+    path.append(start)
+
+    return reversed(path)
 
 
 problems = [
@@ -265,37 +292,32 @@ problems = [
         "goal": PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
     },
 
-
     {
-        "start": PuzzleState(
-            [[ 1, 2, 6],
-             [ 4, 5, 3],
-             [-1, 7, 8 ]]),
+        "start": PuzzleState([[1, 2, 6], [4, 5, 3], [-1, 7, 8]]),
         "goal": PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
     },
 
     {
-        "start": PuzzleState([[1, 2, 6], [-1, 7, 8],[4, 5, 3 ] ]),
+        "start": PuzzleState([[1, 2, 6], [-1, 7, 8], [4, 5, 3]]),
         "goal": PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
     },
 
     {
-        "start": PuzzleState([ [-1, 7, 8],[1, 2, 6],[4, 5, 3 ] ]),
+        "start": PuzzleState([[-1, 7, 8], [1, 2, 6], [4, 5, 3]]),
         "goal": PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
     },
 
     {
-        "start": PuzzleState([[-1,  5, 8],[1, 2, 6], [4,7, 3 ] ]),
+        "start": PuzzleState([[-1, 5, 8], [1, 2, 6], [4, 7, 3]]),
         "goal": PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
     },
 ]
 
 if __name__ == '__main__':
 
-    f = PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]]) in [ PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])]
+    f = PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]]) in [PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])]
     print(f)
     for problem in problems:
-
         print("BFS Start")
         breadth_first_search(*problem.values())
         print("BFS Finish")
@@ -306,4 +328,3 @@ if __name__ == '__main__':
         print("A* Start")
         a_star_search(*problem.values())
         print("A* Stop")
-
