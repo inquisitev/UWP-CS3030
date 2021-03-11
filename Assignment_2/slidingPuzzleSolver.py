@@ -158,26 +158,20 @@ def breadth_first_search(start, goal):
 
     def bfs(front, cgoal):
 
-        if len(front) == 0:
-            return False
 
         node = front.pop()
         if node == cgoal:
             return True
         else:
-            neighbors = []
-            for x in SearchNode(node).neighbors():
-                was_visited = x in visited
-                if not was_visited:
-                    neighbors.append(x)
-                    visited.append(x)
+            neighbors = [x for x in SearchNode(node).neighbors() if x not in visited]
+            if neighbors:
+                front = neighbors + front
+                for c in neighbors:
+                    visited.append(c)
+                    if c not in parents:
+                        parents[c] = node
 
-            front = neighbors + front
-            for c in neighbors:
-                if c not in parents:
-                    parents[c] = node
-
-            bfs(front, cgoal)
+                bfs(front, cgoal)
 
 
     bfs(mfront, goal)
@@ -190,40 +184,47 @@ def breadth_first_search(start, goal):
     #print(start)
 
 
+
+#using psuedo code from https://www.geeksforgeeks.org/iterative-deepening-searchids-iterative-deepening-depth-first-searchiddfs/
+
 def iterative_deepening_depth_first_search(start, goal):
     parents = {}
+    visited = []
 
-    def dldfs(front, cgoal, depth, max_depth, cvisited):
-        if len(front) == 0:
+    def dls(cstart, cgoal, climit):
+
+        visited.append(cstart)
+        if cstart == cgoal:
+            return True
+
+        if limit <= 0:
             return False
-        else:
-            node = front.pop()
-            if node == cgoal:
-                return True
-            elif depth < max_depth:
-                for c in SearchNode(node).neighbors():
-                    if c not in cvisited:
-                        front.append(c)
-                        visited.append(c)
-                        if not c in parents:
-                            parents[c] = node
-                return dldfs(front, cgoal, depth + 1, max_depth, cvisited)
+
+        neighbors = SearchNode(cstart).neighbors()
+        neighbors.sort(key=lambda x : x.get_heuristic_weight(goal))
+        for neighbor in neighbors:
+            if neighbor not in parents:
+                parents[neighbor] = cstart
+            if neighbor not in visited:
+                if dls(neighbor, cgoal, climit - 1):
+                    return True
 
     found = False
-    current_max_depth = 2
-    while not found:
-        mfront = [start]
-        visited = []
-        found = dldfs(mfront, goal, 1, current_max_depth, visited)
-        # print(goal in mfront)
-        current_max_depth += 1
+    for limit in range(0, 150000):
+        if dls(start, goal, limit):
+            found = True
+            break
+    if found:
+        print(goal)
+        node = parents[goal]
+        while node != start:
+            print(node)
+            node = parents[node]
+        print(start)
+        return True
+    else:
+        return  False
 
-    #print(goal)
-    #node = parents[goal]
-    #while node != start:
-    #    print(node)
-    #    node = parents[node]
-    #print(start)
 
 
 def a_star_search(start, goal):
@@ -266,7 +267,25 @@ problems = [
 
 
     {
-        "start": PuzzleState([[1, 2, 6], [4, 5, 3 ], [-1, 7, 8]]),
+        "start": PuzzleState(
+            [[ 1, 2, 6],
+             [ 4, 5, 3],
+             [-1, 7, 8 ]]),
+        "goal": PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
+    },
+
+    {
+        "start": PuzzleState([[1, 2, 6], [-1, 7, 8],[4, 5, 3 ] ]),
+        "goal": PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
+    },
+
+    {
+        "start": PuzzleState([ [-1, 7, 8],[1, 2, 6],[4, 5, 3 ] ]),
+        "goal": PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
+    },
+
+    {
+        "start": PuzzleState([[-1,  5, 8],[1, 2, 6], [4,7, 3 ] ]),
         "goal": PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
     },
 ]
