@@ -1,5 +1,5 @@
-from typing import List, Tuple
-import itertools, time
+from typing import List, Tuple, Callable
+import itertools, time, sys
 
 
 # Puzzle state represents a 3 by 3 board of spaces.
@@ -10,7 +10,7 @@ class PuzzleState:
     BOARD_SIZE = 3
     VALID_TILE_VALUE_RANGE = list(range(1, 9)) + [-1]
 
-    # The state is represented by a list of lists.
+    # The state is represented by a list of lists. Must be 3 lists containing 3 integers between 1 and 8 and -1
     def __init__(self, rows: List[List[int]]):
         self._rows = rows
 
@@ -89,7 +89,7 @@ class PuzzleState:
             self.in_board_coords(blank_x, blank_y + 1) == tile_pos,
             self.in_board_coords(blank_x - 1, blank_y) == tile_pos,
             self.in_board_coords(blank_x, blank_y - 1) == tile_pos,
-            ]
+        ]
 
         return any(allowed_moves)
 
@@ -168,41 +168,34 @@ class SearchNode:
 
 # Search for goal using breadth first search, return a list of PuzzleStates starting with start and ending with goal
 def breadth_first_search(start: PuzzleState, goal: PuzzleState) -> List[PuzzleState]:
-    mfront = [start]
+    front = [start]
     parents = {}
     visited = set()
-    pnode = None
 
-    # inner recursive search function
-    def bfs(front: PuzzleState, cgoal):
+    node = front.pop()
+
+    while node != goal:
+        neighbors = [x for x in SearchNode(node).neighbors() if x not in visited]
+
+        # Adding this line to attempt to maintain fairness between bfs and dfs
+        #neighbors.sort(key=lambda x: x.get_heuristic_weight(goal))
+        if neighbors:
+            front = neighbors + front
+            for c in neighbors:
+                visited.add(c)
+                if c not in parents:
+                    parents[c] = node
         node = front.pop()
 
-        while node != goal:
-            neighbors = [x for x in SearchNode(node).neighbors() if x not in visited]
-            neighbors.sort(key=lambda x: x.get_heuristic_weight(goal), reverse=True)
-            if neighbors:
-                front = neighbors + front
-                for c in neighbors:
-                    visited.add(c)
-                    if c not in parents:
-                        parents[c] = node
-            node = front.pop()
+    path = [goal]
 
-        return node
+    node = parents[goal]
+    while node != start:
+        path.append(node)
+        node = parents[node]
+    path.append(start)
 
-    res = bfs(mfront, goal)
-
-    if res:
-        path = []
-
-        path.append(goal)
-        node = parents[goal]
-        while node != start:
-            path.append(node)
-            node = parents[node]
-        path.append(start)
-
-        return list(reversed(path))
+    return list(reversed(path))
 
 
 # using psuedo code from https://www.geeksforgeeks.org/iterative-deepening-searchids-iterative-deepening-depth-first-searchiddfs/
@@ -211,21 +204,29 @@ def breadth_first_search(start: PuzzleState, goal: PuzzleState) -> List[PuzzleSt
 # return the path taken to reach goal, or empty list if path does not exist.
 def iterative_deepening_depth_first_search(start: PuzzleState, goal: PuzzleState) -> List[PuzzleState]:
     parents = {}
-    visited = []
-    MAX_DEPTH = 2 ** 12  # just a real big number...
+    visited = set()
+    MAX_DEPTH = 100000 #Pythons max recusion size is 1000 anyways...
 
     # depth limited search inner recursive function
     def dls(cstart: PuzzleState, cgoal: PuzzleState, climit: int):
 
-        visited.append(cstart)
+        visited.add(cstart)
         if cstart == cgoal:
             return True
 
-        if limit <= 0:
+        if climit <= 0:
             return False
 
         neighbors = SearchNode(cstart).neighbors()
-        neighbors.sort(key=lambda x: x.get_heuristic_weight(goal))
+
+        # --------------------------------------------------------------------------------------------------------------
+        # Must add this line to avoid stack overflow.
+        # have tried raising stack size, cant get that to happen. Am keeping track of neighbors that have been
+        # visited, some solutions just require a larger stack than python will let me have. Well aware that this skews
+        # search times and would prefer to not use this hack.
+        #neighbors.sort(key=lambda x: x.get_heuristic_weight(goal))
+        # --------------------------------------------------------------------------------------------------------------
+
         for neighbor in neighbors:
             if neighbor not in parents:
                 parents[neighbor] = cstart
@@ -235,9 +236,11 @@ def iterative_deepening_depth_first_search(start: PuzzleState, goal: PuzzleState
 
     found = False
     for limit in range(0, MAX_DEPTH):
+        visited = set()
         if dls(start, goal, limit):
             found = True
             break
+
     if found:
         path = [goal]
         node = parents[goal]
@@ -250,7 +253,7 @@ def iterative_deepening_depth_first_search(start: PuzzleState, goal: PuzzleState
         return []
 
 
-def a_star_search(start, goal):
+def a_star_search(start: PuzzleState, goal: PuzzleState) -> List[PuzzleState]:
     front = [start]
     visited = [start]
     parents = {}
@@ -286,7 +289,7 @@ def a_star_search(start, goal):
 
 problems = [
     {
-        "start": PuzzleState([[1, 2, 3], [4, 5, 6], [-1, 7, 8]]),
+        "start": PuzzleState([[1, 7, 3], [4, 5, 6], [-1, 2, 8]]),
         "goal": PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
     },
 
@@ -312,7 +315,9 @@ problems = [
 ]
 
 
-def vertical_path_to_horizontal(iterator):
+# Take a list of board states that would be printed in sequence vertically in console and make them all printed
+# on the same row with arrows in between to nicely display a path. Will return a string ready to print to console
+def vertical_path_to_horizontal(iterator: List) -> str:
     rows = [[] for _ in range(5)]
     board_num = 0
     for board in iterator:
@@ -330,27 +335,24 @@ def vertical_path_to_horizontal(iterator):
     return '\n'.join(printable_rows)
 
 
-# solve the search problem, print out revelent data regaurding the search,
-def time_n_print_solve(label, func, args):
-
+# solve the search problem, print out revelent data regaurding the search, Label is a name for the function,
+# func is the sorting function {bfs, dldfs, a*} and args is a list containing start state and end state in that order
+def time_n_print_solve(label: str, func: Callable, args: Tuple[PuzzleState, PuzzleState]):
     tic = time.perf_counter()
     solution = vertical_path_to_horizontal(func(*args))
     toc = time.perf_counter()
 
     out = []
-    out.append('-'*180)
+    out.append('-' * 180)
     out.append(f"Searching via {label} took {toc - tic:0.4f} seconds")
-    out.append(f"Start{ ' ' * 15} Goal")
+    out.append(f"Start{' ' * 15} Goal")
     out.append(vertical_path_to_horizontal(args))
     out.append('')
     out.append("Solution")
     out.append(solution)
 
-    out.append('-'*180)
+    out.append('-' * 180)
     return toc - tic, '\n'.join(out)
-
-
-
 
 
 if __name__ == '__main__':
@@ -366,8 +368,6 @@ if __name__ == '__main__':
             times[label].append(result[0])
             results[label].append(result[1])
 
-        break
-
     for label in algs.keys():
         with open(f"{label}_results.txt", 'w+') as out_file:
             for result in results[label]:
@@ -376,7 +376,6 @@ if __name__ == '__main__':
 
     with open("times.txt", 'w+') as out_file:
         for label, time_vals in times.items():
-            avg_time = sum(time_vals)/len(time_vals)
+            avg_time = sum(time_vals) / len(time_vals)
             print(f"{label} -> {str(avg_time)}")
             out_file.write(f"{label} -> {str(avg_time)}\n")
-

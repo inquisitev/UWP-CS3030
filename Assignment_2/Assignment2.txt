@@ -1,0 +1,27 @@
+Trevor Keegan
+
+
+1.)     The branching factor is 4 and there are 8 spaces that are not blank, so the
+        search space is 4^8 or 65536.
+
+        Compare that to 40320 for the 8! search space of a standard
+        sliding puzzle.
+
+        Adding ROE adds 25216 new possible search states to the problem.
+
+2.)     The state is represented by using a nested list to describe the rows and columns.
+        Corresponding python file is slidingPuzzleSolver.py
+        Please refer to the type hinting and code comments for more explanation.
+        Please refer to times.txt for the average times to solve all 5 problems for each algorithm
+        Please refer to A*_results.txt, BFS_results.txt, or IDDFS_results.txt for problems,
+            run times per problem, and solutions per problem
+
+
+3.)     Please refer to eightQueensSolver.py to see my solution for this problem.
+        General description of strategy is to populate the board with 8 queens along the diagnal.
+        After populated, swap only the column of every queen against every other to generate a list of possible moves
+        Select the best of those possible moves as the next state.
+        Choose next state to be current state if it is better or if the rare choice function chooses it.
+
+        the rating of a board is calculated by seeing how many queens are in danger and HOW they are in danger.
+        Each vulnerability by sharing columns, rows or diagnal between queens is counted and summed to create a rating.

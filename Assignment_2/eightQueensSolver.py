@@ -1,5 +1,8 @@
-import itertools, random
+import random
 import math
+
+# Repersent a set of 8 queens that must resided on an 8x8 space.
+from typing import Tuple
 
 
 class BoardState:
@@ -16,6 +19,7 @@ class BoardState:
         for i in range(0, self.BOARD_SIZE):
             self._occupied_spaces.append((i, i))
 
+    # compute the best neighbor by swaping the row of every queen against every other and taking the best outcome
     def best_neighbor(self):
 
         neighbors = {}
@@ -25,8 +29,17 @@ class BoardState:
             dict[space_1[0]] = space_2[1]
             dict[space_2[0]] = sp1_row
 
-        for i in range(0, self.BOARD_SIZE):
-            for j in range(0, self.BOARD_SIZE):
+        #--------------------------------------------------------
+        # This section allows for different out comes
+        base_list = list(range(0, self.BOARD_SIZE))
+        board_rows = base_list.copy()
+        random.shuffle(board_rows)
+        board_cols = base_list.copy()
+        random.shuffle(board_cols)
+        #--------------------------------------------------------
+
+        for i in board_rows:
+            for j in board_cols:
                 if i != j:
                     oc_dict = {x: y for x, y in self._occupied_spaces}
                     start = self._occupied_spaces[i]
@@ -38,27 +51,32 @@ class BoardState:
         lowest_threat = min(neighbors.keys())
         return neighbors[lowest_threat]
 
+    #deep copy the board state
     def copy(self):
         new_board = BoardState()
         new_board._occupied_spaces = [x for x in self._occupied_spaces]
         return new_board
 
-    def get_threat_level(self):
-        def same_row(new, existing):
+    # Compute number of threats that a queen faces. Higher number implies worse board
+    def get_threat_level(self) -> int:
+
+        #check that two queens are on same row
+        def same_row(new: Tuple[int,int], existing: Tuple[int,int]) -> bool:
             return new[0] == existing[0]
 
-        def same_col(new, existing):
+        # check that two queens are on same column
+        def same_col(new: Tuple[int,int], existing: Tuple[int,int])-> bool:
             return new[1] == existing[1]
 
         # Check that the difference in the x,y is the same, implying square shift, implying same diagnal.
-        def same_diag(new, existing):
+        def same_diag(new: Tuple[int,int], existing: Tuple[int,int]) -> bool:
             return abs(new[0] - existing[0]) == abs(new[1] - existing[1])
 
         threat = 0
         for space in self._occupied_spaces:
             for other_space in self._occupied_spaces:
                 spaces = [space, other_space]
-                if space != other_space:
+                if space != other_space: #ignore current queen to allow for result of zero
                     if same_diag(*spaces):
                         threat += 1
                     if same_col(*spaces):
@@ -67,6 +85,7 @@ class BoardState:
                         threat += 1
         return threat
 
+    #pretty print board.
     def __str__(self):
         rows = []
         for row in range(0, self.BOARD_SIZE):
@@ -78,12 +97,11 @@ class BoardState:
         return '\n'.join(rows)
 
 
-# dont generate new random each time. Modify current state then select the best one or a possible worst one
-# add a move_queen, get open rows, get open cols, get queens that share row/col, generate neighbors
 
+
+# use simualted annealing to get the best solution
 def simulated_annealing(start):
     state = start
-    prev_state = start
     for trial in reversed(range(10000000)):
         prev_state = state
         if trial == 0 or state.get_threat_level() == 0:
