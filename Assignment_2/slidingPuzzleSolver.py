@@ -1,6 +1,9 @@
 from typing import List, Tuple, Callable
-import itertools, time, sys
+import itertools, time, sys, random
 
+WANT_APROX_DEPTH = True
+if WANT_APROX_DEPTH:
+    depths = []
 
 # Puzzle state represents a 3 by 3 board of spaces.
 # 8 spaces are occupied by a tile. One space is blank.
@@ -239,6 +242,8 @@ def iterative_deepening_depth_first_search(start: PuzzleState, goal: PuzzleState
         visited = set()
         if dls(start, goal, limit):
             found = True
+            if WANT_APROX_DEPTH:
+                depths.append(limit)
             break
 
     if found:
@@ -354,8 +359,32 @@ def time_n_print_solve(label: str, func: Callable, args: Tuple[PuzzleState, Puzz
     out.append('-' * 180)
     return toc - tic, '\n'.join(out)
 
+def make_random_puzzle():
+    spaces = [1, 2, 3, 4, 5, 6, 7, 8, -1]
 
-if __name__ == '__main__':
+    random.shuffle(spaces)
+    spaces = [spaces[0:3],spaces[3:6],spaces[6:9]]
+
+    return PuzzleState(spaces)
+
+
+def approximate_average_depth():
+    # Generate random boards
+    # run iterative deepening on all of them
+    # record depth of solution
+    # find average depth of all solutions
+
+    goal = PuzzleState([[1, 2, 3], [4, 5, 6], [7, 8, -1]])
+    
+    for trial in range(100):    
+        problem = make_random_puzzle()
+        iterative_deepening_depth_first_search(problem, goal)
+        print(depths[-1])
+    print(sum(depths)/len(depths))
+
+approximate_average_depth()
+
+def run_algos():
 
     algs = {"BFS": breadth_first_search, "IDDFS": iterative_deepening_depth_first_search, "A*": a_star_search}
 

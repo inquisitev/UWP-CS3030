@@ -1,13 +1,9 @@
 Trevor Keegan
 
 
-1.)     The branching factor is 4 and there are 8 spaces that are not blank, so the
-        search space is 4^8 or 65536.
-
-        Compare that to 40320 for the 8! search space of a standard
-        sliding puzzle.
-
-        Adding ROE adds 25216 new possible search states to the problem.
+1.)     The branching factor is 4 and after running 100 iterative deepening searches to calculate average depth, I
+        estimate that the average depth is 18. So the search space of ROE is 4^18 compared to 3 ^ 20. So the 
+        search space for ROE is roughly 20 times larger
 
 2.)     The state is represented by using a nested list to describe the rows and columns.
         Corresponding python file is slidingPuzzleSolver.py
