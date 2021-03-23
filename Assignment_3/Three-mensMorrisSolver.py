@@ -1,12 +1,13 @@
-import itertools
-from operator import add
+import itertools, math
+from operator import add, gt, lt
 
 class BoardState:
   BLANK_SPACE = -1
   PLAYER_1_SPACE = 1
   PLAYER_2_SPACE = 2
   BOARD_SIZE = 3
-  def __init__(self, board = None):
+  def __init__(self, board = None, move_msg = ""):
+    self.move_msg = move_msg
     if board:
       self._board = board
     else:
@@ -44,7 +45,7 @@ class BoardState:
         out = [
             "+--------------+",
             f"| {val_or_b(0, 0)}    {val_or_b(0, 1)}    {val_or_b(0, 2)}  |",
-            f"| {val_or_b(1, 0)}    {val_or_b(1, 1)}    {val_or_b(1, 2)}  |",
+            f"| {val_or_b(1, 0)}    {val_or_b(1, 1)}    {val_or_b(1, 2)}  | {self.move_msg}",
             f"| {val_or_b(2, 0)}    {val_or_b(2, 1)}    {val_or_b(2, 2)}  |",
             "+--------------+"
         ]
@@ -53,7 +54,7 @@ class BoardState:
 
   def get_neighboring_spaces(self, space):
 
-    deltas = [(0, 1), (1, 0), (0, -1), (-1, 0) ]
+    deltas = [(0, 1), (1, 0), (0, -1), (-1, 0), (1,1),(-1,1),(1,-1),(-1,-1)]
 
     def in_board(sp):
       return all([0 <= x < self.BOARD_SIZE for x in sp] )
@@ -71,20 +72,20 @@ class BoardState:
   def check_win(self):
     rows = [((i,0), (i,1), (i,2)) for i in range(self.BOARD_SIZE) ]
     cols = [((0,i), (1,i), (2,i)) for i in range(self.BOARD_SIZE)]
-    diags = [tuple((j,j) for j in range(self.BOARD_SIZE)) ]
+    diags = [tuple((j,j) for j in range(self.BOARD_SIZE)) ] + [tuple((self.BOARD_SIZE - 1 - j,j) for j in range(self.BOARD_SIZE)) ]
 
     lines = rows + cols + diags
 
     for line in lines:
         vals = set(self._board[space[0]][space[1]] for space in line)
-        val = next(iter(vals)) 
+        val = next(iter(vals))
 
         # If the set has only one element and it is not a blank space then we have a line populated
         # by a single player mark indicating a win
         if len(vals) == 1 and val != self.BLANK_SPACE:
-            return ((val,line))
+            return val
     
-    return False
+    return None
 
   def get_player_spaces(self, player):
     return self._get_spaces_by_value(player)
@@ -119,7 +120,11 @@ class SearchNode:
   def get_heuristic_value(self, player, depth):
     recorded_win = self.board_state.check_win()
     if recorded_win:
-      return 1 if player == recorded_win[0] else -1
+      if player == recorded_win[0]:
+        val = 1
+      else: 
+        val = -1
+      return val
     else:
       return 0
   
@@ -129,6 +134,7 @@ class SearchNode:
     if len(player_spaces) < 3:
       for space in self.board_state.get_blank_spaces():
         new_board = self.board_state.copy()
+        new_board.move_msg = f"Place for {player} at {space}"
         new_board.set_value_at_space(space, player)
         neighbors.append(new_board)
 
@@ -138,6 +144,8 @@ class SearchNode:
           space_val = self.board_state.get_value_at_space(space)
           if space_val == self.board_state.BLANK_SPACE:
             new_board = self.board_state.copy()
+
+            new_board.move_msg = f"Move for {player} From {player_space} To {space}"
             new_board.set_value_at_space(space, player)
             new_board.set_value_at_space(player_space, self.board_state.BLANK_SPACE)
             neighbors.append(new_board)
@@ -145,19 +153,51 @@ class SearchNode:
     return neighbors
     
 
-
-visited_states = []
+parents = {}
+visited_states = set()
 def minimax(node, depth, max_player_1):
-  if depth == 0 or node.is_leaf(visited_states):
-    return node.get_heuristic_value(1 if max_player_1 else 2, depth)
+
+
+  current_player = 1 if max_player_1 else 2
+  evaluate = max if max_player_1 else min
+  best = -math.inf if max_player_1 else math.inf
+  comparator = gt if max_player_1 else lt
+
+  winner = node.board_state.check_win()
+  if winner == 1:
+    return 1
+  elif winner == 2:
+    return -1
+  elif depth == 0:
+    return 0
+
+
+
+
+
+  #make dict key -> heuristic, value -> neighbor
+  neighbors = {}
+  for neighbor in node.get_neighbors(current_player):
+    value = minimax(SearchNode(neighbor), depth - 1, not max_player_1)
+    visited_states.add(neighbor)
+    neighbors[value] = neighbor
+  
+
+  best = evaluate(neighbors.keys())
+  best_neighbor = neighbors[best]
+  parents[node.board_state] = best_neighbor
+  return best
   
 
 bs = BoardState()
-bs.set_value_at_space((0,0),1)
-bs.set_value_at_space((0,1),2)
-bs.set_value_at_space((0,2),1)
-
 sn = SearchNode(bs)
-print(minimax(sn, 1, True))
+bs.check_win()
+print(minimax(sn,10, True))
+
+node = parents[bs]
+print(bs)
+while node in parents.keys():
+    node = parents[node]
+    print(node)
 
 
