@@ -118,16 +118,17 @@ def get_player_on_line(board, player, line):
 def rate_board(board):
     res = check_wins(board)
     if res == PLAYER_1:
-        return 123456789
+        return 1000000000
     if res == PLAYER_2:
         return -1000000000
     return 0
 
 parents = {}
 visited = set()
-def minimax(board, node, maxing_player, depth = 0):
+def minimax(board, maxing_player, depth = 0):
     wins = check_wins(board)
-    if wins != None or str(board) in visited or depth > 5:
+    if wins != None or str(board) in visited :
+
         return rate_board(board)
 
     visited.add(str(board))
@@ -138,7 +139,8 @@ def minimax(board, node, maxing_player, depth = 0):
         neighbors = make_neighbors(board, PLAYER_1)
 
         if len(neighbors) == 0: #If no adjacent positions are empty, the player loses its turn and the other player makes their move
-            return minimax(board, node, not maxing_player, depth +1 )
+
+            return minimax(board, not maxing_player, depth +1 )
         for neighbor in neighbors:
             value = minimax(neighbor, not maxing_player, depth + 1) if str(neighbor) not in visited else 0
 
@@ -146,7 +148,7 @@ def minimax(board, node, maxing_player, depth = 0):
                 best = value
                 bestNeighbor = neighbor
                 
-        
+        parents[str(board)] = bestNeighbor
         return best
     else:
         best = 1000
@@ -160,11 +162,11 @@ def minimax(board, node, maxing_player, depth = 0):
 
             value = minimax(neighbor, not maxing_player, depth + 1) if str(neighbor) not in visited else 0
 
-            if value <= best:
+            if value >= best:
                 best = value
                 bestNeighbor = neighbor
-
-
+        
+        parents[str(board)] = bestNeighbor
         return best
 
 
@@ -178,11 +180,13 @@ board = make_board()
 #board[2][1] = PLAYER_2
 #board[0][0] = PLAYER_2
 
-print_board(board)
-
 cboard = copy_board(make_board())
-print(board == cboard)
 node = Node(str(board))
-val = minimax(board,node, True)
+val = minimax(board,  False)
 
-print(val)
+print_board(board)
+node = str(board)
+while node in parents:
+    board = parents[node]
+    node = str(board)
+    print_board(board)
