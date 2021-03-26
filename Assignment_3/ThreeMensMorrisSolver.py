@@ -1,4 +1,8 @@
 import itertools, math
+from anytree import Node, RenderTree
+from anytree.dotexport import DotExporter
+from anytree.render import ContStyle
+from anytree.dotexport import RenderTreeGraph
 from operator import add
 BLANK = -1
 PLAYER_1 = 1
@@ -21,27 +25,26 @@ def make_board():
 def copy_board(board):
     return [[board[j][i] for i in range(3)] for j in range(3)]
 
-def print_board(board):
+def print_board(board, indent = 0):
 
     def val_or_b(row: int, col: int) -> str:
         val = board[row][col]
         if val == BLANK:
           return "B"
-        elif val == PLAYER_1:
-          return "1"
-        elif val == PLAYER_2:
-          return "2"
+        else:
+          return str(val)
 
 
     out = [
-        "+--------------+",
-        f"| {val_or_b(0, 0)}    {val_or_b(0, 1)}    {val_or_b(0, 2)}  |",
-        f"| {val_or_b(1, 0)}    {val_or_b(1, 1)}    {val_or_b(1, 2)}  |",
-        f"| {val_or_b(2, 0)}    {val_or_b(2, 1)}    {val_or_b(2, 2)}  |",
-        "+--------------+"
+        '\t' * indent + "+--------------+",
+        '\t' * indent + f"| {val_or_b(0, 0)}    {val_or_b(0, 1)}    {val_or_b(0, 2)}  |",
+        '\t' * indent + f"| {val_or_b(1, 0)}    {val_or_b(1, 1)}    {val_or_b(1, 2)}  |",
+        '\t' * indent + f"| {val_or_b(2, 0)}    {val_or_b(2, 1)}    {val_or_b(2, 2)}  |",
+        '\t' * indent + "+--------------+"
     ]
 
-    print('\n'.join(out))
+    joiner = '\n' 
+    print(joiner.join(out))
 
 def check_wins(board):
     
@@ -75,6 +78,8 @@ def get_pieces(board, player):
     return pieces
 
 def make_neighbors(board, active_player):
+    if check_wins(board):
+        return [board]
     neighbors = []
     occurances = get_pieces(board, active_player)
     if len(occurances) < 3:
@@ -100,52 +105,84 @@ def make_neighbors(board, active_player):
     return neighbors
 
 
+def get_player_on_line(board, player, line):
+    count = 0
+    for x,y in line:
+        if board[x][y] == player:
+            count += 1
+
+    return count
+
+
+
 def rate_board(board):
     res = check_wins(board)
-    if res == 1:
-        return 1000
-    elif res == 2:
-        return -1000
-    else:
-        return calculate_heuristic_value(board, 1) - calculate_heuristic_value(board ,2)
+    if res == PLAYER_1:
+        return 123456789
+    if res == PLAYER_2:
+        return -1000000000
+    return 0
 
-visited = []
-def minimax(board, max_turn):
+parents = {}
+visited = set()
+def minimax(board, node, maxing_player, depth = 0):
+    wins = check_wins(board)
+    if wins != None or str(board) in visited or depth > 5:
+        return rate_board(board)
 
-    rating = rate_board(board)
+    visited.add(str(board))
+    #visited must be board at depth
+    if maxing_player:
+        best = -1000
+        bestNeighbor = None
+        neighbors = make_neighbors(board, PLAYER_1)
 
-    visited.append(board)
-    if rating == 1000 or rating == -1000:
-        return rating
-    
-    
+        if len(neighbors) == 0: #If no adjacent positions are empty, the player loses its turn and the other player makes their move
+            return minimax(board, node, not maxing_player, depth +1 )
+        for neighbor in neighbors:
+            value = minimax(neighbor, not maxing_player, depth + 1) if str(neighbor) not in visited else 0
 
-    if max_turn:
-        neighbors = make_neighbors(copy_board(board), 1)
-
-        outcomes = {minimax(neighbor, False): neighbor for neighbor in neighbors if neighbor not in visited}
-
-        keys = list(outcomes.keys() )
-        best = max(keys + [0])
-        if best in keys:
-            print_board(outcomes[best])
-
-        return best
-    
-    else:
-        neighbors = make_neighbors(copy_board(board), 2)
+            if value >= best:
+                best = value
+                bestNeighbor = neighbor
+                
         
+        return best
+    else:
+        best = 1000
+        bestNeighbor = None
+        neighbors = make_neighbors(board, PLAYER_2)
+        if len(neighbors) == 0: #If no adjacent positions are empty, the player loses its turn and the other player makes their move
+            return minimax(board, not maxing_player, depth + 1)
+        
+        for neighbor in neighbors:
 
-        outcomes = {minimax(neighbor, True): neighbor for neighbor in neighbors  if neighbor not in visited}
-        keys = list(outcomes.keys())
-        best = min(keys + [0])
-        if best in keys:
-            print_board(outcomes[best])
+
+            value = minimax(neighbor, not maxing_player, depth + 1) if str(neighbor) not in visited else 0
+
+            if value <= best:
+                best = value
+                bestNeighbor = neighbor
+
 
         return best
 
 
-print(minimax(make_board(), False))
+board = make_board()
+#board[0][2] = PLAYER_1
+#board[1][1] = PLAYER_1
+#board[2][2] = PLAYER_1
+#
+#
+#board[2][0] = PLAYER_2
+#board[2][1] = PLAYER_2
+#board[0][0] = PLAYER_2
 
+print_board(board)
 
+cboard = copy_board(make_board())
+print(board == cboard)
+node = Node(str(board))
+val = minimax(board,node, True)
 
+print(val)
