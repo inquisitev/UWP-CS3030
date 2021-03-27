@@ -1,8 +1,12 @@
 import itertools, math
+from anytree import Node, RenderTree
+from anytree.dotexport import DotExporter
+from anytree.render import ContStyle
+from anytree.dotexport import RenderTreeGraph
 from operator import add
-BLANK = 0
+BLANK = -1
 PLAYER_1 = 1
-PLAYER_2 = -1
+PLAYER_2 = 2
 
 WIN_LINES =  [
         [(0,0),(0,1),(0,2)],
@@ -16,22 +20,17 @@ WIN_LINES =  [
         ]
 
 def make_board():
-    return [[BLANK,BLANK,BLANK],[BLANK,BLANK,BLANK],[BLANK,BLANK,BLANK]]
+    return [[-1,-1,-1],[-1,-1,-1],[-1,-1,-1]]
 
 def copy_board(board):
     return [[board[j][i] for i in range(3)] for j in range(3)]
 
-def print_board(board, indent = 0, console = True):
+def print_board(board, indent = 0):
 
     def val_or_b(row: int, col: int) -> str:
         val = board[row][col]
         if val == BLANK:
           return "B"
-        elif val == PLAYER_1:
-            return "1"
-
-        elif val == PLAYER_2:
-            return "2"
         else:
           return str(val)
 
@@ -45,10 +44,7 @@ def print_board(board, indent = 0, console = True):
     ]
 
     joiner = '\n' 
-    if console:
-        print(joiner.join(out))
-    else: 
-        return joiner.join(out)
+    print(joiner.join(out))
 
 def check_wins(board):
     
@@ -107,24 +103,7 @@ def make_neighbors(board, active_player):
             neighbors.append(new_board)
         
     return neighbors
-# Take a list of board states that would be printed in sequence vertically in console and make them all printed
-# on the same row with arrows in between to nicely display a path. Will return a string ready to print to console
-def vertical_path_to_horizontal(iterator) -> str:
-    rows = [[] for _ in range(5)]
-    board_num = 0
-    for board in iterator:
-        row = print_board(board, console=False).split('\n')
-        for i in range(len(row)):
-            rows[i].append(row[i])
-        board_num += 1
 
-    printable_rows = []
-    row_num = 0
-    for row in rows:
-        seperator = "  -> " if row_num == int(len(rows) / 2) else "     "
-        printable_rows.append(seperator.join(row))
-        row_num += 1
-    return '\n'.join(printable_rows)
 
 def get_player_on_line(board, player, line):
     count = 0
@@ -134,82 +113,61 @@ def get_player_on_line(board, player, line):
 
     return count
 
-def get_parents(board):
-    game_states = []
-    game_states.append(board)
-    node = str(board)
-    while node in parents:
-        board = parents[node]
-        node = str(board)
-        game_states.append(board)
-    return game_states
-
-class Node:
-    def __init__(self, board, parent, maxing = True, depth = 0):
-        self.board = board
-        self.parent = parent
-        self.value = 0
-        self.children = []
-        self.maxing = maxing
-        self.depth = depth
-    
-    def __str__(self):
-        return f"VAL: {self.value}, MAX: {self.maxing}, DEPTH: {self.depth} BOARD: {self.board}"
-    
-    def __repr__(self):
-        return self.__str__()
-
-    def is_ancestor(self,board):
-
-        if self.parent is None:
-            return False
-        
-        current = self.parent
-        while current is not None:
-            if current.board == board:
-                return True
-            current = current.parent
-        return False
 
 
 def rate_board(board):
     res = check_wins(board)
     if res == PLAYER_1:
-        return 1
+        return 1000000000
     if res == PLAYER_2:
-        return -1
+        return -1000000000
     return 0
 
 parents = {}
 visited = set()
-def minimax(node, maxing_player, depth = 0):
-    board = node.board
+def minimax(board, maxing_player, depth = 0):
     wins = check_wins(board)
-    if wins != None:
+    if wins != None or str(board) in visited :
+
         return rate_board(board)
 
-    best, player, compare = (-1000000, PLAYER_1, lambda a,b : a >= b) if maxing_player else (1000000, PLAYER_2, lambda a,b : a <= b)
-    
-    neighbors = make_neighbors(board, player)
+    visited.add(str(board))
+    #visited must be board at depth
+    if maxing_player:
+        best = -1000
+        bestNeighbor = None
+        neighbors = make_neighbors(board, PLAYER_1)
 
-    for neighbor in neighbors:
-        if node.is_ancestor(neighbor):
-            continue
-        else:
-            neighbor_node = Node(neighbor, node, maxing_player, depth)
-            node.children.append(neighbor_node)
-            value = minimax(neighbor_node, not maxing_player, depth + 1) 
-            neighbor_node.value = value
+        if len(neighbors) == 0: #If no adjacent positions are empty, the player loses its turn and the other player makes their move
 
-        if compare(value, best):
-            best = value
-            bestNeighbor = neighbor
+            return minimax(board, not maxing_player, depth +1 )
+        for neighbor in neighbors:
+            value = minimax(neighbor, not maxing_player, depth + 1) if str(neighbor) not in visited else 0
+
+            if value >= best:
+                best = value
+                bestNeighbor = neighbor
+                
+        parents[str(board)] = bestNeighbor
+        return best
+    else:
+        best = 1000
+        bestNeighbor = None
+        neighbors = make_neighbors(board, PLAYER_2)
+        if len(neighbors) == 0: #If no adjacent positions are empty, the player loses its turn and the other player makes their move
+            return minimax(board, not maxing_player, depth + 1)
+        
+        for neighbor in neighbors:
 
 
-    return best
+            value = minimax(neighbor, not maxing_player, depth + 1) if str(neighbor) not in visited else 0
 
-
-    
+            if value >= best:
+                best = value
+                bestNeighbor = neighbor
+        
+        parents[str(board)] = bestNeighbor
+        return best
 
 
 board = make_board()
@@ -223,19 +181,12 @@ board = make_board()
 #board[0][0] = PLAYER_2
 
 cboard = copy_board(make_board())
-node = Node(board, None, True, 0)
-val = minimax(node,  True)
+node = Node(str(board))
+val = minimax(board,  False)
 
-with open("file.txt", "w+") as f:
-    def print_node(node, depth):
-        f.write('\t' * depth + str(node) + "\n") 
-        for child in node.children:
-            print_node(child, depth + 1)
-    print_node(node, 0)
-
-
-visited = set()
-parents = {}
-
-board = make_board()
-val = minimax(Node(board, None),  False)
+print_board(board)
+node = str(board)
+while node in parents:
+    board = parents[node]
+    node = str(board)
+    print_board(board)
