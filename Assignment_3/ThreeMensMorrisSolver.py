@@ -4,8 +4,8 @@ from typing import List, Tuple
 BLANK = 0
 PLAYER_1 = 1
 PLAYER_2 = 2
-
-MAX_DEPTH = 15
+nodemap = {}
+MAX_DEPTH = 14
 
 WIN_LINES =  [
         [(0,0),(0,1),(0,2)],
@@ -136,10 +136,14 @@ class Node:
     # make a child for the current board with iterating depth, alternating maxing, 
     # and copied parents
     def make_child_with_board(self, board: List[List[int]]) -> 'Node':
-        child = Node(board, maxing = not self.maxing, depth= self.depth + 1)
-        child.parents= self.parents.copy()
-        child.parents[str(self)] = self
-        self.children.append(child)
+        serialized = f"Board:{board}, Max:{not self.maxing}"
+        if serialized in nodemap:
+        else:
+            child = Node(board, maxing = not self.maxing, depth= self.depth + 1)
+            child.parents= self.parents.copy()
+            child.parents[str(self)] = str(self) #temperary hopefully...
+            nodemap[serialized] = child
+        self.children.append(str(child))
         return child
     
     #two nodes are equal if they have the same board and same maxing player
@@ -286,14 +290,14 @@ def alpha_beta_minimax(current_node: Node, alpha = -100000000, beta = 100000000)
 
     
 def minimax_analysis(p1start):
-
+    nodemap = {}
     board = make_board()
     node = Node(board, maxing=p1start)
     minimax(node)
     return [n.board for n in node.get_favorite_path()]
 
 def ab_analysis(p1start):
-
+    nodemap = {}
     board = make_board()
     node = Node(board, maxing=p1start)
     minimax(node)
@@ -321,6 +325,7 @@ def run_algos():
 
     for label, algo in algs.items():
         for value in [False, True]:
+            print(label + "Player " + ("1" if value else "2") + " First")
             result = time_n_print_solve(label + "Player " + ("1" if value else "2") + " First", algo, [value])
             times[label].append(result[0])
             results[label].append(result[1])
