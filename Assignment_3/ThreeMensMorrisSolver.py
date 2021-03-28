@@ -138,6 +138,7 @@ class Node:
     def make_child_with_board(self, board: List[List[int]]) -> 'Node':
         serialized = f"Board:{board}, Max:{not self.maxing}"
         if serialized in nodemap:
+            child = nodemap[serialized]
         else:
             child = Node(board, maxing = not self.maxing, depth= self.depth + 1)
             child.parents= self.parents.copy()
