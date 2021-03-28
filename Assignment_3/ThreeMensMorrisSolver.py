@@ -1,8 +1,11 @@
-import itertools, math
+import itertools, math, time
 from operator import add
+from typing import List, Tuple
 BLANK = 0
 PLAYER_1 = 1
 PLAYER_2 = 2
+
+MAX_DEPTH = 15
 
 WIN_LINES =  [
         [(0,0),(0,1),(0,2)],
@@ -14,14 +17,16 @@ WIN_LINES =  [
         [(0,0),(1,1),(2,2)],
         [(0,2),(1,1),(2,0)],
         ]
-
-def make_board():
+#Generate a blank boardd
+def make_board() -> List[List[int]] :
     return [[BLANK,BLANK,BLANK],[BLANK,BLANK,BLANK],[BLANK,BLANK,BLANK]]
 
-def copy_board(board):
+#duplicate a board and all its pieces
+def copy_board(board: List[List[int]]):
     return [[board[j][i] for i in range(3)] for j in range(3)]
 
-def print_board(board, indent = 0, console = True):
+#pretty return a pretty board and print to console if console set to true
+def print_board(board:List[List[int]] , indent: int = 0, console: bool = True) -> str:
 
     def val_or_b(row: int, col: int) -> str:
         val = board[row][col]
@@ -47,10 +52,11 @@ def print_board(board, indent = 0, console = True):
     joiner = '\n' 
     if console:
         print(joiner.join(out))
-    else: 
-        return joiner.join(out)
+    
+    return joiner.join(out)
 
-def check_wins(board):
+#check if a player occupies all of a single win line, returns a winning player ID
+def check_wins(board: List[List[int]]) -> int:
     
     for line in WIN_LINES:
         vals = set()
@@ -62,25 +68,16 @@ def check_wins(board):
     else:
         return None
 
-def calculate_heuristic_value(board, player):
-    
-    value = 0
-    for line in WIN_LINES:
-        occs = 0
-        for x,y in line:
-            if board[x][y] == player:
-                occs += 1
-        value += 2 ** occs if occs > 0 else 0
-    return value
-
-def get_pieces(board, player):
+#Calculate the difference in moves to win heuristic
+def get_pieces(board: List[List[int]], player: int) -> List[Tuple[int,int]]:
     pieces = []
     for i,j in itertools.product(range(3), range(3)):
         if board[i][j] == player:
             pieces.append((i,j))
     return pieces
 
-def make_neighbors(board, active_player):
+#get the location for all pieces on the board, return a list of possible next boards
+def make_neighbors(board: List[List[int]], active_player: int) -> List[List[List[int]]]:
     if check_wins(board):
         return [board]
     neighbors = []
@@ -107,7 +104,8 @@ def make_neighbors(board, active_player):
         
     return neighbors
 
-def vertical_path_to_horizontal(iterator) -> str:
+#pretty print a list of boards
+def vertical_path_to_horizontal(iterator: List[str]) -> str:
     rows = [[] for _ in range(5)]
     board_num = 0
     for board in iterator:
@@ -124,26 +122,9 @@ def vertical_path_to_horizontal(iterator) -> str:
         row_num += 1
     return '\n'.join(printable_rows)
 
-def get_player_on_line(board, player, line):
-    count = 0
-    for x,y in line:
-        if board[x][y] == player:
-            count += 1
-
-    return count
-
-def get_parents(board):
-    game_states = []
-    game_states.append(board)
-    node = str(board)
-    while node in parents:
-        board = parents[node]
-        node = str(board)
-        game_states.append(board)
-    return game_states
-
+# a node in the search space. Used to eliminate cycles
 class Node:
-    def __init__(self, board, maxing = True, depth = 0):
+    def __init__(self, board: List[List[int]], maxing:bool = True, depth: int = 0) -> 'Node':
         self.board = board
         self.parents = {}
         self.value = None
@@ -152,30 +133,42 @@ class Node:
         self.depth = depth
         self.favorite_child = None
 
-    def make_child_with_board(self, board):
+    # make a child for the current board with iterating depth, alternating maxing, 
+    # and copied parents
+    def make_child_with_board(self, board: List[List[int]]) -> 'Node':
         child = Node(board, maxing = not self.maxing, depth= self.depth + 1)
         child.parents= self.parents.copy()
         child.parents[str(self)] = self
+        self.children.append(child)
         return child
     
-    def __eq__(self, other):
+    #two nodes are equal if they have the same board and same maxing player
+    def __eq__(self, other: 'Node') -> bool:
         return self.board == other.board and self.maxing == other.maxing
 
-    def hash(self):
-        return hash((self.board, self.maxing))
-
-    def __str__(self):
+    # pretty print a node
+    def __str__(self) -> str:
         return f"Board:{self.board}, Max:{self.maxing}"
     
-    def __repr__(self):
+    def get_favorite_path(self):
+        path = []
+        fav = self.favorite_child
+        while fav is not None:
+            path.append(fav)
+            fav = fav.favorite_child
+        return path
+
+    #pretty printing in debugger
+    def __repr__(self) -> str:
         return self.__str__()
 
-    def is_ancestor(self,board, maxing):
+    # node is previous state if board and maxing pair have already happened
+    def is_ancestor(self,board: List[List[int]], maxing: bool) -> bool:
         anc = str(Node(board, maxing)) in self.parents.keys()
         return anc
 
-
-def compute_diff_possible_wins(board):
+#Calculate the difference in moves to win heuristic
+def compute_diff_possible_wins(board: List[List[int]]) -> int:
     possible_win_for_1 = 0
     possible_win_for_2 = 0
     for line in WIN_LINES:
@@ -186,7 +179,8 @@ def compute_diff_possible_wins(board):
             possible_win_for_2 += 1
     return possible_win_for_1 - possible_win_for_2
 
-def rate_board(board):
+#rate board as win loss or draw
+def rate_board(board: List[List[int]]) -> int:
     res = check_wins(board)
     if res == PLAYER_1:
         return 8
@@ -194,28 +188,30 @@ def rate_board(board):
         return -8
     return 0
 
+nodes = []
 
-def minimax(node):
-    board = node.board
-    player = 1 if node.maxing else 2
+#minimax algorithm
+def minimax(current_node: Node) -> int:
+    board = current_node.board
+    player = 1 if current_node.maxing else 2
     neighbors = make_neighbors(board, player)
 
-    if check_wins(board) is not None:
+    if check_wins(board) is not None or current_node.depth == MAX_DEPTH :
         return rate_board(board)
 
-    if node.maxing:
+    if current_node.maxing:
         best = -1000000
         value = -best
         for neighbor in neighbors:
-            if node.is_ancestor(neighbor, not node.maxing):
+            if current_node.is_ancestor(neighbor, not current_node.maxing):
                 continue
                 #possibly continue
             else:
-                neighbor_node = node.make_child_with_board(neighbor)
+                neighbor_node = current_node.make_child_with_board(neighbor)
                 value = minimax(neighbor_node)
                 if value >= best:
                     best = value
-                    node.favorite_child = neighbor_node
+                    current_node.favorite_child = neighbor_node
 
         return best
             
@@ -223,66 +219,122 @@ def minimax(node):
         best = 1000000
         value = -best
         for neighbor in neighbors:
-            if node.is_ancestor(neighbor, not node.maxing):
+            if current_node.is_ancestor(neighbor, not current_node.maxing):
                 continue
                 #possibly continue
             else:
-                neighbor_node = node.make_child_with_board(neighbor)
+                neighbor_node = current_node.make_child_with_board(neighbor)
                 value = minimax(neighbor_node)
                 if value <= best:
                     best = value
-                    node.favorite_child = neighbor_node
+                    current_node.favorite_child = neighbor_node
         return best
     
 
+#minimax algorithm
+def alpha_beta_minimax(current_node: Node, alpha = -100000000, beta = 100000000) -> int:
+    board = current_node.board
+    player = 1 if current_node.maxing else 2
+    neighbors = make_neighbors(board, player)
+
+    if check_wins(board) is not None or current_node.depth == MAX_DEPTH:
+        return rate_board(board)
+
+    if current_node.maxing:
+        best = -1000000
+        value = -1000000
+        nodevalue = -best
+        for neighbor in neighbors:
+            if current_node.is_ancestor(neighbor, not current_node.maxing):
+                continue
+                #possibly continue
+            else:
+                neighbor_node = current_node.make_child_with_board(neighbor)
+                ab = alpha_beta_minimax(neighbor_node, alpha, beta)
+                value = max(value, ab)
+                alpha = max(alpha, value)
+                if alpha >= beta:
+                    break
+                if nodevalue >= best:
+                    best = nodevalue
+                    current_node.favorite_child = neighbor_node
+
+        return best
+            
+    else:
+        best = 1000000
+        value = 1000000
+        ab = -best
+        for neighbor in neighbors:
+            if current_node.is_ancestor(neighbor, not current_node.maxing):
+                continue
+                #possibly continue
+            else:
+                neighbor_node = current_node.make_child_with_board(neighbor)
+                ab = alpha_beta_minimax(neighbor_node, alpha, beta)
+                value = min(value, ab)
+                beta = min(beta, value)
+                if beta <= alpha:
+                    break
+                if ab <= best:
+                    best = ab
+                    current_node.favorite_child = neighbor_node
+        return best
+
 
 
 
     
+def minimax_analysis(p1start):
 
+    board = make_board()
+    node = Node(board, maxing=p1start)
+    minimax(node)
+    return [n.board for n in node.get_favorite_path()]
 
-board = make_board()
-node = Node(board)
-minimax(node)
+def ab_analysis(p1start):
 
+    board = make_board()
+    node = Node(board, maxing=p1start)
+    minimax(node)
+    return [n.board for n in node.get_favorite_path()]
 
+def time_n_print_solve(label: str, func, args = []):
+    tic = time.perf_counter()
+    solution = vertical_path_to_horizontal(func(*args))
+    toc = time.perf_counter()
 
+    out = []
+    out.append('-' * 180)
+    out.append(f"{label} took {toc - tic:0.4f} seconds")
+    out.append(solution)
 
-quit()
-#board[0][2] = PLAYER_1
-#board[1][1] = PLAYER_1
-#board[2][2] = PLAYER_1
-#
-#
-#board[2][0] = PLAYER_2
-#board[2][1] = PLAYER_2
-#board[0][0] = PLAYER_2
+    out.append('-' * 180)
+    return toc - tic, '\n'.join(out)
 
-cboard = copy_board(make_board())
-node = visited[board]
-#val = minimax(board,  True, depth = 0)
-#val = minimax(board,  True, depth = 0)
-val = ab_minimax(board,  True, -100000000,100000000, depth = 16)
+def run_algos():
 
+    algs = {"Minimax": minimax_analysis, "ABMinimax": ab_analysis}
 
-current_node = node
-while current_node is not None:
-    print_board(current_node.board)
-    winners = [child for child in current_node.children if child.value == 8]
-    current_node = winners[0]
-    if len(current_node.children) == 0:
-        break
+    times = {label: [] for label in algs.keys()}
+    results = {label: [] for label in algs.keys()}
 
+    for label, algo in algs.items():
+        for value in [False, True]:
+            result = time_n_print_solve(label + "Player " + ("1" if value else "2") + " First", algo, [value])
+            times[label].append(result[0])
+            results[label].append(result[1])
 
-#with open("file.txt", "w+") as f:
-#    def print_node(node, depth):
-#        f.write('\t' * depth + str(node) + "\n") 
-#        for child in node.children:
- #           print_node(child, depth + 1)
-#    print_node(node, 0)
+    for label in algs.keys():
+        with open(f"{label}_results.txt", 'w+') as out_file:
+            for result in results[label]:
+                out_file.write(str(result))
+                out_file.write("\n\n\n")
 
+    with open("times.txt", 'w+') as out_file:
+        for label, time_vals in times.items():
+            avg_time = sum(time_vals) / len(time_vals)
+            print(f"{label} -> {str(avg_time)}")
+            out_file.write(f"{label} -> {str(avg_time)}\n")
 
-parents = {}
-
-board = make_board()
-#al = minimax(Node(board, None),  False)
+run_algos()
