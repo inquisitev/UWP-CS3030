@@ -258,32 +258,68 @@ def minimax(board, maxing_player, depth = 0):
 
 
 visited = TranspositionTable()
-def ab_minimax(node, maxing_player, alpha, beta, depth = 0):
-    board = node.board
+def ab_minimax(board, maxing_player, alpha, beta, depth = 0):
+    
+    node = visited[board]
     wins = check_wins(board)
-    visited.add(str(board))
     if wins is not None or depth == 0:
         return rate_board(board)
 
     if maxing_player:
         value = -10000000
+        best = value
         for neighbor in make_neighbors(board, PLAYER_1):
-            if not node.is_ancestor(neighbor):
-                neighbor_node = Node(neighbor, node, maxing_player, 16 - depth)
-                node.children.append(neighbor_node)
-                value = max(value, ab_minimax(neighbor_node, False, alpha, beta, depth - 1))
+            
+            
+            neighbor_node = visited.__getitem__(neighbor, parent = node, depth = depth, maxing = maxing_player)
+            node.children.append(neighbor_node)
+            
+            if str(neighbor) in node.parents:
+                continue
+
+
+            if not neighbor_node.computing:
+                value = neighbor_node.value
+            else:
+                ab = ab_minimax(neighbor, False, alpha, beta, depth - 1)
+                value = max(value,ab )
+                neighbor_node.computing = False
+                neighbor_node.value = value
                 if max(alpha, value) >= beta:
                     break
+        
+            if best >= value:
+                best = value
+                node.favorite_child = neighbor_node
+
+
         return value
     else:
         value = 10000000
+        best = value
         for neighbor in make_neighbors(board, PLAYER_2):
-            if not node.is_ancestor(neighbor):
-                neighbor_node = Node(neighbor, node, maxing_player, 16 - depth)
-                node.children.append(neighbor_node)
-                value = min(value, ab_minimax(neighbor_node, True, alpha, beta, depth - 1))
+
+            neighbor_node = visited.__getitem__(neighbor, parent = node, depth = depth, maxing = maxing_player)
+            node.children.append(neighbor_node)
+            
+            if str(neighbor) in node.parents:
+                continue
+
+
+            if not neighbor_node.computing:
+                value = neighbor_node.value
+            else:
+                ab = ab_minimax(neighbor, True, alpha, beta, depth - 1)
+                value = min(value, ab)
+                neighbor_node.computing = False
+                neighbor_node.value = value
                 if min(beta, value) <= alpha:
                     break
+            
+            if best <= value:
+                best = value
+                node.favorite_child = neighbor_node
+                
         return value
 
 visited = TranspositionTable()
@@ -347,14 +383,18 @@ board = make_board()
 
 cboard = copy_board(make_board())
 node = visited[board]
-val = minimax(board,  True, depth = 0)
+#val = minimax(board,  True, depth = 0)
+#val = minimax(board,  True, depth = 0)
+val = ab_minimax(board,  True, -100000000,100000000, depth = 16)
 
 
 current_node = node
-print_board(current_node.board)
-while current_node.favorite_child is not None:
-    print_board(current_node.favorite_child.board)
-    current_node = current_node.favorite_child
+while current_node is not None:
+    print_board(current_node.board)
+    winners = [child for child in current_node.children if child.value == 8]
+    current_node = winners[0]
+    if len(current_node.children) == 0:
+        break
 
 
 #with open("file.txt", "w+") as f:
