@@ -2,7 +2,7 @@ import itertools, math
 from operator import add
 BLANK = 0
 PLAYER_1 = 1
-PLAYER_2 = -1
+PLAYER_2 = 2
 
 WIN_LINES =  [
         [(0,0),(0,1),(0,2)],
@@ -51,7 +51,6 @@ def print_board(board, indent = 0, console = True):
         return joiner.join(out)
 
 def check_wins(board):
-    
     
     for line in WIN_LINES:
         vals = set()
@@ -107,8 +106,7 @@ def make_neighbors(board, active_player):
             neighbors.append(new_board)
         
     return neighbors
-# Take a list of board states that would be printed in sequence vertically in console and make them all printed
-# on the same row with arrows in between to nicely display a path. Will return a string ready to print to console
+
 def vertical_path_to_horizontal(iterator) -> str:
     rows = [[] for _ in range(5)]
     board_num = 0
@@ -145,13 +143,24 @@ def get_parents(board):
     return game_states
 
 class Node:
-    def __init__(self, board, parent, maxing = True, depth = 0):
+    def __init__(self, board,  maxing = True, depth = 0):
         self.board = board
-        self.parent = parent
-        self.value = 0
+        self.parents = set()
+        self.parent_stack = []
+        self.value = None
+        self.computing = True
         self.children = []
         self.maxing = maxing
         self.depth = depth
+        self.favorite_child = None
+
+    def copywith(self, board):
+        child = Node(board, maxing = not self.maxing, depth= self.depth + 1)
+        child.parent_stack.copy()
+        child.parent_stack.insert(0,self)
+        child.parents= self.parents.copy()
+        child.parents.add(str(self.board))
+        return child
     
     def __str__(self):
         return f"VAL: {self.value}, MAX: {self.maxing}, DEPTH: {self.depth} BOARD: {self.board}"
@@ -171,43 +180,157 @@ class Node:
             current = current.parent
         return False
 
+class TranspositionTable(dict):
+    def __init__(self, *args):
+        dict.__init__(self,args)
+
+    
+    def __getitem__(self, board, parent = None, depth = 0, maxing = True):
+        hashed_board = str(board)
+        if hashed_board in self.__dict__:
+            node = self.__dict__.__getitem__(hashed_board)
+            if parent is not None:
+                strpar = str(parent.board)
+                node.parents.add(strpar)
+            return node
+        else:
+            if parent is not None:
+                parent = self.__dict__.__getitem__(str(parent.board))
+                node = parent.copywith(board)
+            else:
+                node = Node(board, maxing, depth)
+            self.__dict__.__setitem__(hashed_board, node)
+            return node
+
+def compute_diff_possible_wins(board):
+    possible_win_for_1 = 0
+    possible_win_for_2 = 0
+    for line in WIN_LINES:
+        if all([board[x][y] != PLAYER_2 for x,y in line]):
+            possible_win_for_1 += 1
+        
+        if all([board[x][y] != PLAYER_1 for x,y in line]):
+            possible_win_for_2 += 1
+    return possible_win_for_1 - possible_win_for_2
 
 def rate_board(board):
     res = check_wins(board)
     if res == PLAYER_1:
-        return 1
+        return 8
     if res == PLAYER_2:
-        return -1
+        return -8
     return 0
 
 parents = {}
-visited = set()
-def minimax(node, maxing_player, depth = 0):
-    board = node.board
+visited = TranspositionTable()
+def minimax(board, maxing_player, depth = 0):
+ 
+    node = visited[board]
     wins = check_wins(board)
-    if wins != None:
+    if wins is not None:
         return rate_board(board)
 
     best, player, compare = (-1000000, PLAYER_1, lambda a,b : a >= b) if maxing_player else (1000000, PLAYER_2, lambda a,b : a <= b)
     
     neighbors = make_neighbors(board, player)
-
     for neighbor in neighbors:
-        if node.is_ancestor(neighbor):
+
+        neighbor_node = visited.__getitem__(neighbor, parent = node, depth = depth, maxing = maxing_player)
+        node.children.append(neighbor_node)
+        if str(neighbor) in node.parents:
+            value = neighbor_node.value
             continue
+
+        if not neighbor_node.computing:
+            value = neighbor_node.value
         else:
-            neighbor_node = Node(neighbor, node, maxing_player, depth)
-            node.children.append(neighbor_node)
-            value = minimax(neighbor_node, not maxing_player, depth + 1) 
+            value = minimax(neighbor, not maxing_player, depth + 1) 
+            neighbor_node.computing = False
             neighbor_node.value = value
 
         if compare(value, best):
             best = value
             bestNeighbor = neighbor
+            node.favorite_child = neighbor_node
 
 
     return best
 
+
+visited = TranspositionTable()
+def ab_minimax(node, maxing_player, alpha, beta, depth = 0):
+    board = node.board
+    wins = check_wins(board)
+    visited.add(str(board))
+    if wins is not None or depth == 0:
+        return rate_board(board)
+
+    if maxing_player:
+        value = -10000000
+        for neighbor in make_neighbors(board, PLAYER_1):
+            if not node.is_ancestor(neighbor):
+                neighbor_node = Node(neighbor, node, maxing_player, 16 - depth)
+                node.children.append(neighbor_node)
+                value = max(value, ab_minimax(neighbor_node, False, alpha, beta, depth - 1))
+                if max(alpha, value) >= beta:
+                    break
+        return value
+    else:
+        value = 10000000
+        for neighbor in make_neighbors(board, PLAYER_2):
+            if not node.is_ancestor(neighbor):
+                neighbor_node = Node(neighbor, node, maxing_player, 16 - depth)
+                node.children.append(neighbor_node)
+                value = min(value, ab_minimax(neighbor_node, True, alpha, beta, depth - 1))
+                if min(beta, value) <= alpha:
+                    break
+        return value
+
+visited = TranspositionTable()
+def ab_minimax_heuristic(node, maxing_player, alpha, beta, depth = 0):
+    board = node.board
+    wins = check_wins(board)
+    visited.add(str(board))
+    if wins is not None or depth == 0:
+        return rate_board(board)
+
+    def sorter(board):
+        val = compute_diff_possible_wins(board)
+        return val
+
+    if maxing_player:
+        value = -10000000
+        neighbors = make_neighbors(board, PLAYER_1)
+        neighbors.sort(key=sorter, reverse=True)
+        for neighbor in neighbors:
+            if not node.is_ancestor(neighbor):
+                neighbor_node = Node(neighbor, node, maxing_player, 16 - depth)
+                node.children.append(neighbor_node)
+                current_val = ab_minimax_heuristic(neighbor_node, False, alpha, beta, depth - 1)
+                neighbor_node.value = current_val
+                value = max(value, current_val )
+                if max(alpha, value) >= beta:
+                    break
+            else:
+                value = 0
+        return value
+    else:
+        value = 10000000
+
+        neighbors = make_neighbors(board, PLAYER_2)
+        neighbors.sort(key=sorter, reverse=True)
+        for neighbor in neighbors:
+            if not node.is_ancestor(neighbor):
+                neighbor_node = Node(neighbor, node, maxing_player, 16 - depth)
+                node.children.append(neighbor_node)
+                current_val = ab_minimax_heuristic(neighbor_node, True, alpha, beta, depth - 1)
+                neighbor_node.value = current_val
+                value = min(value, current_val)
+                if min(beta, value) <= alpha:
+                    break
+            else:
+                value = 0
+        return value
 
     
 
@@ -223,19 +346,26 @@ board = make_board()
 #board[0][0] = PLAYER_2
 
 cboard = copy_board(make_board())
-node = Node(board, None, True, 0)
-val = minimax(node,  True)
-
-with open("file.txt", "w+") as f:
-    def print_node(node, depth):
-        f.write('\t' * depth + str(node) + "\n") 
-        for child in node.children:
-            print_node(child, depth + 1)
-    print_node(node, 0)
+node = visited[board]
+val = minimax(board,  True, depth = 0)
 
 
-visited = set()
+current_node = node
+print_board(current_node.board)
+while current_node.favorite_child is not None:
+    print_board(current_node.favorite_child.board)
+    current_node = current_node.favorite_child
+
+
+#with open("file.txt", "w+") as f:
+#    def print_node(node, depth):
+#        f.write('\t' * depth + str(node) + "\n") 
+#        for child in node.children:
+ #           print_node(child, depth + 1)
+#    print_node(node, 0)
+
+
 parents = {}
 
 board = make_board()
-val = minimax(Node(board, None),  False)
+#al = minimax(Node(board, None),  False)
