@@ -5,7 +5,7 @@ BLANK = 0
 PLAYER_1 = 1
 PLAYER_2 = 2
 
-MAX_DEPTH = 19
+MAX_DEPTH = 18
 
 WIN_LINES =  [
         [(0,0),(0,1),(0,2)],
@@ -263,7 +263,6 @@ def alpha_beta_minimax(current_node: Node, max_is_first=True, alpha = -100000000
         nodevalue = best
         neighbors = make_neighbors(board, player)
         neighbors.sort(key= compute_diff_possible_wins, reverse=True)
-        values = []
         for neighbor in neighbors:
             if current_node.is_ancestor(neighbor, not current_node.maxing):
                 continue
@@ -272,13 +271,12 @@ def alpha_beta_minimax(current_node: Node, max_is_first=True, alpha = -100000000
                 neighbor_node = current_node.make_child_with_board(neighbor)
                 ab = alpha_beta_minimax(neighbor_node, max_is_first=max_is_first, alpha = alpha, beta = beta, )
                 nodevalue = max(nodevalue, ab)
-                values.append(nodevalue)
                 alpha = max(alpha, nodevalue)
                 if ab >= best:
                     best = ab
                     current_node.favorite_child = neighbor_node
                     current_node.value = nodevalue
-                if alpha >= beta:
+                if beta <= alpha:
                     break
 
         return best
@@ -287,7 +285,6 @@ def alpha_beta_minimax(current_node: Node, max_is_first=True, alpha = -100000000
         best = 1000000
         value = 1000000
         ab = best
-        values = []
         neighbors = make_neighbors(board, player)
         neighbors.sort(key= compute_diff_possible_wins, reverse=True)
         for neighbor in neighbors:
@@ -298,7 +295,6 @@ def alpha_beta_minimax(current_node: Node, max_is_first=True, alpha = -100000000
                 neighbor_node = current_node.make_child_with_board(neighbor)
                 ab = alpha_beta_minimax(neighbor_node,max_is_first=max_is_first, alpha = alpha, beta = beta, )
                 value = min(value, ab)
-                values.append(value)
                 beta = min(beta, value)
                 if ab <= best:
                     best = ab
