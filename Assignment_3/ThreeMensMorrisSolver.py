@@ -5,7 +5,7 @@ BLANK = 0
 PLAYER_1 = 1
 PLAYER_2 = 2
 
-MAX_DEPTH = 15
+MAX_DEPTH = 19
 
 WIN_LINES =  [
         [(0,0),(0,1),(0,2)],
@@ -82,17 +82,27 @@ def make_neighbors(board: List[List[int]], active_player: int) -> List[List[List
         return [board]
     neighbors = []
     occurances = get_pieces(board, active_player)
-    if len(occurances) < 3:
+    if len(occurances) < 3: #TODO HERE
         for i,j in itertools.product(range(3), range(3)):
             if board[i][j] == BLANK:
                 neighbor = copy_board(board)
                 neighbor[i][j] = active_player
                 neighbors.append(neighbor)
     else:
-        deltas = [(-1,1), (1,0), (1,1), (1, 0), (1,-1), (0,-1), (-1,-1), (-1, 0)]
+        deltas = {
+            (0,0): [(1,0), (1, 1), (0, 1)], #Good
+            (1,0): [(-1,0), (1, 0), (0,1)], #Good
+            (2,0): [(-1,0), (-1, 1), (0,1)], #Good
+            (0,1): [(0,-1), (1, 0), (0,1)], #Good
+            (1,1):[(-1,1), (1,0), (1,1), (1, 0), (1,-1), (0,-1), (-1,-1), (-1, 0)],
+            (2,1): [(0,-1), (-1, 0), (0,1)], #Good
+            (0,2): [(1,-1), (1, 0), (0,-1)], 
+            (1,2):[(-1,0), (1, 0), (0,-1)],
+            (2,2): [(0,-1), (-1, 0),(-1,-1)], 
+            }
         new_positions = set()
         for occurance in occurances:
-            for delta in deltas:
+            for delta in deltas[occurance]:
                 new_pos = tuple(map(add, occurance, delta ))
                 if 0 <= new_pos[0] < 3 and 0 <= new_pos[1] < 3 and board[new_pos[0]][new_pos[1]] == BLANK:
                     new_positions.add((occurance, new_pos))
@@ -150,17 +160,20 @@ class Node:
     def __str__(self) -> str:
         return f"Board:{self.board}, Max:{self.maxing}"
     
+    #pretty printing in debugger
+    def __repr__(self):
+        return f"VAL: {self.value}, Board:{self.board}, Max:{self.maxing}"
+    
     def get_favorite_path(self):
         path = []
+        path.append(self)
         fav = self.favorite_child
         while fav is not None:
             path.append(fav)
             fav = fav.favorite_child
+        #path.append(fav)
         return path
 
-    #pretty printing in debugger
-    def __repr__(self) -> str:
-        return self.__str__()
 
     # node is previous state if board and maxing pair have already happened
     def is_ancestor(self,board: List[List[int]], maxing: bool) -> bool:
@@ -177,6 +190,7 @@ def compute_diff_possible_wins(board: List[List[int]]) -> int:
         
         if all([board[x][y] != PLAYER_1 for x,y in line]):
             possible_win_for_2 += 1
+
     return possible_win_for_1 - possible_win_for_2
 
 #rate board as win loss or draw
@@ -231,54 +245,67 @@ def minimax(current_node: Node) -> int:
         return best
     
 
-#minimax algorithm
-def alpha_beta_minimax(current_node: Node, alpha = -100000000, beta = 100000000) -> int:
+#minimax algorithm with alpha beta pruning
+def alpha_beta_minimax(current_node: Node, max_is_first=True, alpha = -100000000, beta = 100000000) -> int:
     board = current_node.board
-    player = 1 if current_node.maxing else 2
-    neighbors = make_neighbors(board, player)
+    if max_is_first:
+        player = 1 if current_node.maxing else 2
+    else:
+        player = 2 if current_node.maxing else 1
+
 
     if check_wins(board) is not None or current_node.depth == MAX_DEPTH:
-        return rate_board(board)
+        value = rate_board(board)
+        return value
 
     if current_node.maxing:
         best = -1000000
-        value = -1000000
-        nodevalue = -best
+        nodevalue = best
+        neighbors = make_neighbors(board, player)
+        neighbors.sort(key= compute_diff_possible_wins, reverse=True)
+        values = []
         for neighbor in neighbors:
             if current_node.is_ancestor(neighbor, not current_node.maxing):
                 continue
                 #possibly continue
             else:
                 neighbor_node = current_node.make_child_with_board(neighbor)
-                ab = alpha_beta_minimax(neighbor_node, alpha, beta)
-                value = max(value, ab)
-                alpha = max(alpha, value)
+                ab = alpha_beta_minimax(neighbor_node, max_is_first=max_is_first, alpha = alpha, beta = beta, )
+                nodevalue = max(nodevalue, ab)
+                values.append(nodevalue)
+                alpha = max(alpha, nodevalue)
+                if ab >= best:
+                    best = ab
+                    current_node.favorite_child = neighbor_node
+                    current_node.value = nodevalue
                 if alpha >= beta:
                     break
-                if nodevalue >= best:
-                    best = nodevalue
-                    current_node.favorite_child = neighbor_node
 
         return best
             
     else:
         best = 1000000
         value = 1000000
-        ab = -best
+        ab = best
+        values = []
+        neighbors = make_neighbors(board, player)
+        neighbors.sort(key= compute_diff_possible_wins, reverse=True)
         for neighbor in neighbors:
             if current_node.is_ancestor(neighbor, not current_node.maxing):
                 continue
                 #possibly continue
             else:
                 neighbor_node = current_node.make_child_with_board(neighbor)
-                ab = alpha_beta_minimax(neighbor_node, alpha, beta)
+                ab = alpha_beta_minimax(neighbor_node,max_is_first=max_is_first, alpha = alpha, beta = beta, )
                 value = min(value, ab)
+                values.append(value)
                 beta = min(beta, value)
-                if beta <= alpha:
-                    break
                 if ab <= best:
                     best = ab
                     current_node.favorite_child = neighbor_node
+                    current_node.value = value
+                if beta <= alpha:
+                    break
         return best
 
 
@@ -295,8 +322,9 @@ def minimax_analysis(p1start):
 def ab_analysis(p1start):
 
     board = make_board()
-    node = Node(board, maxing=p1start)
-    minimax(node)
+    node = Node(board)
+    print(alpha_beta_minimax(node, max_is_first=p1start))
+        
     return [n.board for n in node.get_favorite_path()]
 
 def time_n_print_solve(label: str, func, args = []):
@@ -314,13 +342,14 @@ def time_n_print_solve(label: str, func, args = []):
 
 def run_algos():
 
-    algs = {"Minimax": minimax_analysis, "ABMinimax": ab_analysis}
+    algs = {"ABMinimax": ab_analysis}
 
     times = {label: [] for label in algs.keys()}
     results = {label: [] for label in algs.keys()}
 
     for label, algo in algs.items():
-        for value in [False, True]:
+        for value in [False]:
+            print(label + " Player " + ("1" if value else "2") + " First")
             result = time_n_print_solve(label + "Player " + ("1" if value else "2") + " First", algo, [value])
             times[label].append(result[0])
             results[label].append(result[1])
