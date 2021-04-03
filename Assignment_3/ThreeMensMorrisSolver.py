@@ -5,7 +5,7 @@ BLANK = 0
 PLAYER_1 = 1
 PLAYER_2 = 2
 
-MAX_DEPTH = 18
+MAX_DEPTH = 16
 
 WIN_LINES =  [
         [(0,0),(0,1),(0,2)],
@@ -344,7 +344,7 @@ def run_algos():
     results = {label: [] for label in algs.keys()}
 
     for label, algo in algs.items():
-        for value in [False]:
+        for value in [False, True]:
             print(label + " Player " + ("1" if value else "2") + " First")
             result = time_n_print_solve(label + "Player " + ("1" if value else "2") + " First", algo, [value])
             times[label].append(result[0])

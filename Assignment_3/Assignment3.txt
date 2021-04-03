@@ -1,0 +1,17 @@
+The chose state is just a list of lists of integers that should be length 3 at both levels. I decided to 
+hard code a map of positions for each neighbor, I hate it, but it was quick and dirty and works... its not broke... so im not fixing it.
+
+1.) As discussed, the search space for Three mens morris is far too large to fully expand and evaluate.
+2.a) Alpha beta pruning does not solve the search space problem alone. I assume that the search tree is shorter, possibly by a exponential factor of 1/2, considering that the
+  time complexity for AB pruning is SQRT(B^D) and for naieve minimax it is B^D.
+2.b) Alpha beta pruning with heuristic sorting solves this nicely. 
+
+I was not able to get a win when player 2 starts first. I cannot figure out why but it works well when player 1 starts. 
+When player 2 starts, the game results in a draw... which after spending over 25 hours trying to get this work, is good enough for me.
+
+
+Please refer to ABMinimax_results.txt for full path and time for the runs. 
+Please refer to times.txt for the average of all times
+Please refer to python typing for code usage docs and to comments for description docs
+
+-Trevor Keegan
