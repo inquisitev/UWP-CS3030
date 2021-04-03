@@ -1,35 +1,43 @@
-GOAL:
-    on(c,table).
-    on(b,c).
-    on(a,b).
+goal:
+    - on(c,table)
+    - on(b,c)
+    - on(a,b)
+    - clear(a)
 
-START:
-    on(c,table).
-    on(b,table).
-    on(a,table).
+start:
+    - on(c,table)
+    - on(b,table)
+    - on(a,table)
+    - clear(a)
+    - clear(b)
+    - clear(c)
 
-ACTIONS:
+actions:
+    move-block-to(BLOCK, FROM, TO):
+        preconditions: 
+            - noteq(BLOCK, table)
+            - on(BLOCK, FROM)
+            - noteq(BLOCK, TO)
+            - clear(BLOCK)
+            - clear(TO)
+        add-effects:
+            - on(BLOCK, TO)
+            - clear(FROM)
+        delete-effects:
+            - on(BLOCK, FROM)
+            - clear(TO)
 
-    MOVE_BETWEEN_BLOCKS(BLOCK, FROM, TO):
-        PRECONDITIONS: 
-            on(BLOCK, FROM).
-            clear(BLOCK).
-            clear(TO).
-        ADD_EFFECTS:
-            on(BLOCK, TO).
-            clear(FROM).
-        DELETE_EFFECTS:
-            not(on(BLOCK, FROM)).
-            not(clear(TO)).
-
-    MOVE_TO_TABLE(BLOCK, FROM, TO):
-        PRECONDITIONS: 
-            on(BLOCK, FROM).
-            clear(BLOCK).
-        ADD_EFFECTS:
-            on(BLOCK, FROM).
-            clear(BLOCK);
-        DELETE_EFFECTS:
-            not(on(BLOCK, table)).
-            not(clear(FROM)).
-            not(on(BLOCK, FROM)).
+    move-block-to-table(BLOCK, FROM):
+        preconditions: 
+            - noteq(BLOCK, table)
+            - noteq(BLOCK, FROM)
+            - ~on(BLOCK, table)
+            - on(BLOCK, FROM)
+            - clear(BLOCK)
+        add-effects:
+            - on(BLOCK, table)
+            - clear(FROM)
+        delete-effects:
+            - on(BLOCK, table)
+            - clear(FROM)
+            - on(BLOCK, FROM)
