@@ -1,4 +1,5 @@
 import yaml, itertools
+from typing import List
 
 def fill_vars_with_literals(stmt, var_map):
     for take, put in var_map:
@@ -48,7 +49,6 @@ def make_new_states(state, actions, forward = True):
                                 new_state.truths.remove(add_effect)
                     resultant_states.append(new_state)
 
-        print(applicable_actions)
         return resultant_states
                 
 
@@ -57,22 +57,31 @@ def make_new_states(state, actions, forward = True):
 class State:
     def __init__(self):
         self.truths = []
+    
+    def __str__(self):
+        return ",".join(self.truths)
+
+    def __repr__(self):
+        return str(self)
 
     def copy(self):
         state = State()
         state.truths = [x for x in self.truths]
         return state
+
+    def __hash__(self):
+        return hash(",".join(self.truths))
     
     def __eq__(self, other):
         def clean_str(string):
             return string.replace(" ", "")
-        return [clean_str(t) for t in self.truth] == [clean_str(t) for t in other.truth]
+        return [clean_str(t) for t in self.truths] == [clean_str(t) for t in other.truths]
     
     def is_substate_of(self, super):
         def clean_str(string):
             return string.replace(" ", "")
-        super_truths = [clean_str(t) for t in other.truth]
-        return all([clean_str(t) in super_truths for t in self.truth])
+        super_truths = [clean_str(t) for t in other.truths]
+        return all([clean_str(t) in super_truths for t in self.truths])
 
     def get_literals(self):
         literals = set()
@@ -88,14 +97,68 @@ class State:
         condition_vars = condition_vars.replace(')', "").replace(" ", "").split(',')
         if condition_name == "noteq":
             return len(set(condition_vars)) == len(condition_vars)
-        if condition_name[0] == "   ~":
+        if condition_name[0] == "~":
             return condition.replace(" ", "") not in [x.replace(" ", "") for x in self.truths]
         else:
             return condition.replace(" ", "") in [x.replace(" ", "") for x in self.truths]
 
+
+
+# Use iterative deepening depth first search to find a path from start state to goal state
+# return the path taken to reach goal, or empty list if path does not exist.
+def iterative_deepening_depth_first_search(start: State, goal: State, actions, forward = True) -> List[State]:
+    parents = {}
+    visited = set()
+    MAX_DEPTH = 100000 #Pythons max recusion size is 1000 anyways...
+
+    # depth limited search inner recursive function
+    def dls(cstart: State, cgoal: State, climit: int):
+
+        visited.add(cstart)
+        if cstart == cgoal:
+            return True
+
+        if climit <= 0:
+            return False
+
+        neighbors = make_new_states(cstart, actions, forward = True)
+
+        for neighbor in neighbors:
+            if neighbor not in parents:
+                parents[neighbor] = cstart
+            if neighbor not in visited:
+                if dls(neighbor, cgoal, climit - 1):
+                    return True
+
+    found = False
+    for limit in range(0, MAX_DEPTH):
+        visited = set()
+        if dls(start, goal, limit):
+            found = True
+            break
+
+    if found:
+        path = [goal]
+        node = parents[goal]
+        while node != start:
+            path.append(node)
+            node = parents[node]
+        path.append(start)
+        return list(reversed(path))
+    else:
+        return []
+
+
+
 with open("C:/Development/UWP-CS3030/Assignment_4/blockworld.strips") as stream:
     implementation_dict = yaml.safe_load(stream)
-    s = State()
-    s.truths = implementation_dict["start"]
-    action = list(implementation_dict["actions"].items())
-    print(len(make_new_states(s, action)))
+    start = State()
+    start.truths = implementation_dict["start"]
+
+    
+    goal = State()
+    goal.truths = implementation_dict["goal"]
+
+
+    actions = list(implementation_dict["actions"].items())
+    iterative_deepening_depth_first_search(start, goal, actions)
