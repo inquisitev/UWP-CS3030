@@ -2,8 +2,6 @@ goal:
     - on(c,table)
     - on(b,c)
     - on(a,b)
-    - clear(a)
-    - clear(table)
     
 
 start:
@@ -20,23 +18,33 @@ actions:
             - on(BLOCK, FROM)
             - clear(BLOCK) 
             - clear(TO)
-            - neq(BLOCK, table)
-            - neq(TO, table)
+            - noteq(BLOCK, table)
+            - noteq(TO, table)
+            - noteq(TO, BLOCK)
+            - noteq(BLOCK, FROM)
         postconditions:
             - on(BLOCK, TO)
             - clear(FROM)
+            - clear(BLOCK) 
             - not(on(BLOCK, FROM))
             - not(clear(TO))
-            - neq(BLOCK, table)
-            - neq(TO, table)
+            - noteq(BLOCK, table)
+            - noteq(TO, table)
+            - noteq(TO, BLOCK)
+            - noteq(BLOCK, FROM)
 
     move-block-to-table(BLOCK, FROM):
         preconditions: 
             - on(BLOCK, FROM)
+            - noteq(FROM, table)
+            - noteq(BLOCK, table)
+            - noteq(BLOCK, FROM)
             - clear(BLOCK)
         postconditions:
-            - on(BLOCK, FROM)
+            - clear(FROM)
             - clear(BLOCK)
-            - not(on(BLOCK, table)) 
-            - not(clear(FROM)) 
+            - on(BLOCK, table)
             - not(on(BLOCK, FROM))
+            - noteq(FROM, table)
+            - noteq(BLOCK, table)
+            - noteq(BLOCK, FROM)

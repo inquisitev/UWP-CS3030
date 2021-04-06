@@ -14,6 +14,9 @@ def make_new_states(state, actions, forward = True):
             action_name, transformations = action
             pre_conditions = transformations["preconditions"]
             post_conditions= transformations["postconditions"]
+            (before_conditions,after_conditions) = (pre_conditions, post_conditions) if forward else (post_conditions, pre_conditions)
+            
+
             condition_name, condition_vars = action_name.split('(')
             condition_vars = condition_vars.replace(')', "").replace(" ", "").split(',')
 
@@ -23,15 +26,9 @@ def make_new_states(state, actions, forward = True):
 
             for replacers in itertools.product(*[literals for i in range(num_replacers)]):
                 var_map = list(zip(condition_vars, replacers))
-                evals = [state.check_condition(fill_vars_with_literals(pc, var_map)) for pc in pre_conditions]
 
-                if forward:
-                    before_conditions = pre_conditions
-                    after_conditions = post_conditions
-                else:
-                    before_conditions = post_conditions
-                    after_conditions = pre_conditions
                     
+                evals = [state.check_condition(fill_vars_with_literals(pc, var_map)) for pc in before_conditions]
 
                 action_is_valid = all(evals)
                 if action_is_valid: 
@@ -41,31 +38,23 @@ def make_new_states(state, actions, forward = True):
                     applicable_actions.append(action_label)
                     new_state = state.copy()
                     new_state.action = action_label
+                    added_truths = []
+                    removed_truths = []
+                    for del_effect in before_conditions:
+                        del_effect = fill_vars_with_literals(del_effect, var_map)
+                        new_state.remove_truth(del_effect)
+                        removed_truths.append(del_effect)
+                    for add_effect in after_conditions:
+                        add_effect = fill_vars_with_literals(add_effect, var_map)
+                        new_state.register_truth(add_effect)
+                        added_truths.append(add_effect)
+                    resultant_states.append(new_state)
+
                     print('-'*90)
                     print(f"Current State: {','.join(state.truths)}")
                     print(f"Action: {action_label}")
-                    added_truths = []
-                    removed_truths = []
-                    for del_effect in pre_conditions:
-                        del_effect = fill_vars_with_literals(del_effect, var_map)
-                        if del_effect in new_state.truths:
-                            new_state.truths.remove(del_effect)
-                            removed_truths.append(del_effect)
-                        else:
-                            removed_truths.append(f"{del_effect} dne")
-                    for add_effect in post_conditions:
-                        add_effect = fill_vars_with_literals(add_effect, var_map)
-                        if add_effect not in new_state.truths:
-                            new_state.truths.append(add_effect)
-                            added_truths.append(add_effect)
-                        else:
-                            added_truths.append(f"{add_effect} ae")
-                    resultant_states.append(new_state)
-
-                    
                     print(f"Adding Truths: {','.join(added_truths)}")
                     print(f"New State: {','.join(new_state.truths)}")
-
                     print('-'*90)
 
 
@@ -94,6 +83,20 @@ class State:
 
     def __hash__(self):
         return hash(",".join(self.truths))
+
+    def register_truth(self, truth):
+        truth = truth.replace(' ', '')
+        register_conditions = [
+            'noteq' not in truth,
+            truth not in self.truths,
+            truth.split('(')[0] != 'not',
+        ]
+        if all(register_conditions):
+            self.truths.append(truth)
+
+    def remove_truth(self, truth):
+        if truth in self.truths:
+            self.truths.remove(truth)
     
     def __eq__(self, other):
         def clean_str(string):
@@ -104,8 +107,10 @@ class State:
     def is_substate_of(self, super):
         def clean_str(string):
             return string.replace(" ", "")
-        super_truths = [clean_str(t) for t in super.truths]
-        return all([clean_str(t) in super_truths for t in self.truths])
+        node_truths = [clean_str(t) for t in self.truths]
+        ins = [clean_str(t) in node_truths for t in super.truths]
+        all_in =  all(ins)
+        return all_in
 
     def get_literals(self):
         literals = set()
@@ -136,6 +141,8 @@ class State:
         else:
             return condition.replace(" ", "") in [x.replace(" ", "") for x in self.truths]
 
+        return False
+
 def print_action_to_state(state):
     while state is not None:
         print(state.action)
@@ -153,7 +160,7 @@ def iterative_deepening_depth_first_search(start: State, goal: State, actions, f
     def dls(cstart: State, cgoal: State, climit: int):
 
         visited.append(cstart)
-        if cstart == cgoal:
+        if cstart.is_substate_of(cgoal):
             print_action_to_state(cstart)
             return True
 
@@ -187,8 +194,14 @@ with open("./Assignment_4/blockworld.strips") as stream:
     goal = State()
     goal.truths = implementation_dict["goal"]
 
+    ns = State()
+    ns.truths = [x for x in start.truths]
+
+    print(start in [ns])
 
 
     actions = list(implementation_dict["actions"].items())
     iterative_deepening_depth_first_search(goal, start, actions, forward=False)
-    #iterative_deepening_depth_first_search(start, goal, actions, forward=True)
+    iterative_deepening_depth_first_search(start, goal, actions, forward=True)
+
+    #print('\n'.join([str(x) for x in make_new_states(start, actions)]))
