@@ -17,36 +17,26 @@ start:
 actions:
     move-block-to(BLOCK, FROM, TO):
         preconditions: 
-            - noteq(BLOCK, table)
-            - noteq(BLOCK, TO)
-            - noteq(BLOCK, FROM)
             - on(BLOCK, FROM)
-            - clear(BLOCK)
+            - clear(BLOCK) 
             - clear(TO)
-        add-effects:
+            - neq(BLOCK, table)
+            - neq(TO, table)
+        postconditions:
             - on(BLOCK, TO)
             - clear(FROM)
-            - noteq(BLOCK, table)
-            - noteq(BLOCK, TO)
-            - noteq(BLOCK, FROM)
-        delete-effects:
-            - on(BLOCK, FROM)
-            - clear(TO)
-            - noteq(BLOCK, table)
-            - noteq(BLOCK, TO)
-            - noteq(BLOCK, FROM)
+            - not(on(BLOCK, FROM))
+            - not(clear(TO))
+            - neq(BLOCK, table)
+            - neq(TO, table)
 
     move-block-to-table(BLOCK, FROM):
         preconditions: 
-            - noteq(BLOCK, table)
-            - noteq(BLOCK, FROM)
-            - ~on(BLOCK, table)
             - on(BLOCK, FROM)
             - clear(BLOCK)
-        add-effects:
-            - on(BLOCK, table)
-            - clear(FROM)
-        delete-effects:
-            - on(BLOCK, table)
-            - clear(FROM)
+        postconditions:
             - on(BLOCK, FROM)
+            - clear(BLOCK)
+            - not(on(BLOCK, table)) 
+            - not(clear(FROM)) 
+            - not(on(BLOCK, FROM))

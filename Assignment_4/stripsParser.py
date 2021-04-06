@@ -13,8 +13,7 @@ def make_new_states(state, actions, forward = True):
         for action in actions:
             action_name, transformations = action
             pre_conditions = transformations["preconditions"]
-            add_effects= transformations["add-effects"]
-            del_effects = transformations["delete-effects"]
+            post_conditions= transformations["postconditions"]
             condition_name, condition_vars = action_name.split('(')
             condition_vars = condition_vars.replace(')', "").replace(" ", "").split(',')
 
@@ -24,85 +23,50 @@ def make_new_states(state, actions, forward = True):
 
             for replacers in itertools.product(*[literals for i in range(num_replacers)]):
                 var_map = list(zip(condition_vars, replacers))
+                evals = [state.check_condition(fill_vars_with_literals(pc, var_map)) for pc in pre_conditions]
+
                 if forward:
-                    evals = [state.check_condition(fill_vars_with_literals(pc, var_map)) for pc in pre_conditions]
-                    action_is_valid = all(evals)
-                    if action_is_valid: 
-                        action_label = fill_vars_with_literals(action_name, var_map)
-                        if action_label in applicable_actions:
-                            continue
-                        applicable_actions.append(action_label)
-                        new_state = state.copy()
-                        new_state.action = action_label
-                        print('-'*90)
-                        print(f"Current State: {','.join(state.truths)}")
-                        print(f"Action: {action_label}")
-                        added_truths = []
-                        removed_truths = []
-                        for del_effect in del_effects:
-                            del_effect = fill_vars_with_literals(del_effect, var_map)
-                            if del_effect in new_state.truths:
-                                new_state.truths.remove(del_effect)
-                                removed_truths.append(del_effect)
-                            else:
-                                removed_truths.append(f"{del_effect} dne")
-                        for add_effect in add_effects:
-                            add_effect = fill_vars_with_literals(add_effect, var_map)
-                            if add_effect not in new_state.truths:
-                                new_state.truths.append(add_effect)
-                                added_truths.append(add_effect)
-                            else:
-                                added_truths.append(f"{add_effect} ae")
-                        resultant_states.append(new_state)
-
-                        
-                        print(f"Adding Truths: {','.join(added_truths)}")
-                        print(f"Removing Truths: {','.join(removed_truths)}")
-                        print(f"New State: {new_state.truths}")
-
-                        print('-'*90)
+                    before_conditions = pre_conditions
+                    after_conditions = post_conditions
                 else:
-                    adds = [fill_vars_with_literals(pc, var_map) for pc in add_effects]
-                    dels = [fill_vars_with_literals(pc, var_map)for pc in del_effects]
-                    add_evals = [state.check_condition(cond) for cond in add_effects] 
-                    del_evals =  [state.check_condition(cond, delete_cond = True) for cond in dels]
-                    action_is_valid = all(add_evals + del_evals)
-                    if action_is_valid: 
-                        action_label = fill_vars_with_literals(action_name, var_map)
-                        if action_label in applicable_actions:
-                            continue
-                        applicable_actions.append(action_label)
-                        new_state = state.copy()
-                        new_state.action = action_label
-                        print('-'*90)
-                        print(f"Current State: {','.join(state.truths)}")
-                        print(f"Action: {action_label}")
-                        added_truths = []
-                        for pc in pre_conditions:
-                            pc = fill_vars_with_literals(pc, var_map)
-                            if pc not in new_state.truths:
-                                new_state.truths.append(pc)
-                                added_truths.append(pc)
-                            else:
-                                added_truths.append(f"{pc} ae")
-                        
-                        
-                        removed_truths = []
-                        for pc in add_effects:
-                            pc = fill_vars_with_literals(pc, var_map)
-                            if pc in new_state.truths:
-                                new_state.truths.remove(pc)
-                                removed_truths.append(pc)
-                            else:
-                                removed_truths.append(f"{pc} dne")
-                        
-                        print(f"Adding Truths: {','.join(added_truths)}")
-                        print(f"Removing Truths: {','.join(removed_truths)}")
-                        print(f"New State: {new_state.truths}")
+                    before_conditions = post_conditions
+                    after_conditions = pre_conditions
+                    
 
-                        print('-'*90)
-                        
-                        resultant_states.append(new_state)
+                action_is_valid = all(evals)
+                if action_is_valid: 
+                    action_label = fill_vars_with_literals(action_name, var_map)
+                    if action_label in applicable_actions:
+                        continue
+                    applicable_actions.append(action_label)
+                    new_state = state.copy()
+                    new_state.action = action_label
+                    print('-'*90)
+                    print(f"Current State: {','.join(state.truths)}")
+                    print(f"Action: {action_label}")
+                    added_truths = []
+                    removed_truths = []
+                    for del_effect in pre_conditions:
+                        del_effect = fill_vars_with_literals(del_effect, var_map)
+                        if del_effect in new_state.truths:
+                            new_state.truths.remove(del_effect)
+                            removed_truths.append(del_effect)
+                        else:
+                            removed_truths.append(f"{del_effect} dne")
+                    for add_effect in post_conditions:
+                        add_effect = fill_vars_with_literals(add_effect, var_map)
+                        if add_effect not in new_state.truths:
+                            new_state.truths.append(add_effect)
+                            added_truths.append(add_effect)
+                        else:
+                            added_truths.append(f"{add_effect} ae")
+                    resultant_states.append(new_state)
+
+                    
+                    print(f"Adding Truths: {','.join(added_truths)}")
+                    print(f"New State: {','.join(new_state.truths)}")
+
+                    print('-'*90)
 
 
         return resultant_states
@@ -152,12 +116,22 @@ class State:
                     literals.add(literal)
         return list(iter(literals))
 
-    def check_condition(self, condition, delete_cond = False):
-        condition_name, condition_vars = condition.split('(')
+    def check_condition(self, condition):
+        spl = condition.split('(')
+        if (len(spl) > 2):
+            if condition.replace(" ", "") in [x.replace(" ", "") for x in self.truths]:
+                return True
+            _, condition_name, condition_vars = spl
+            inversion = True
+        else:
+            condition_name, condition_vars = spl
+            inversion = False
+        #condition_name, condition_vars = condition.split('(')
         condition_vars = condition_vars.replace(')', "").replace(" ", "").split(',')
         if condition_name == "noteq":
             return len(set(condition_vars)) == len(condition_vars)
-        if condition_name[0] == "~" or delete_cond:
+        if inversion :
+            condition = f"{condition_name}({','.join(condition_vars)})"
             return condition.replace(" ", "") not in [x.replace(" ", "") for x in self.truths]
         else:
             return condition.replace(" ", "") in [x.replace(" ", "") for x in self.truths]
@@ -212,6 +186,7 @@ with open("./Assignment_4/blockworld.strips") as stream:
     
     goal = State()
     goal.truths = implementation_dict["goal"]
+
 
 
     actions = list(implementation_dict["actions"].items())
