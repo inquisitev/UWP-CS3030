@@ -3,6 +3,8 @@ goal:
     - on(b,c)
     - on(a,b)
     - clear(a)
+    - clear(table)
+    
 
 start:
     - on(c,table)
@@ -16,16 +18,23 @@ actions:
     move-block-to(BLOCK, FROM, TO):
         preconditions: 
             - noteq(BLOCK, table)
-            - on(BLOCK, FROM)
             - noteq(BLOCK, TO)
+            - noteq(BLOCK, FROM)
+            - on(BLOCK, FROM)
             - clear(BLOCK)
             - clear(TO)
         add-effects:
             - on(BLOCK, TO)
             - clear(FROM)
+            - noteq(BLOCK, table)
+            - noteq(BLOCK, TO)
+            - noteq(BLOCK, FROM)
         delete-effects:
             - on(BLOCK, FROM)
             - clear(TO)
+            - noteq(BLOCK, table)
+            - noteq(BLOCK, TO)
+            - noteq(BLOCK, FROM)
 
     move-block-to-table(BLOCK, FROM):
         preconditions: 
