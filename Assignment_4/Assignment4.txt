@@ -1,0 +1,26 @@
+For this assignment, i decided to use python. I also decided to store the move definitions in a .yaml style folder so that it could be parsed in a nice way. 
+That file is labeled as blockworld.strips. In these strips files, you must specify the start state, goal state, and actions where a word in all upper case is treated as a varaible.
+
+I utilized the library pyyaml to parse the yaml file.
+
+Below is the output of the program when running blockwold.strips
+
+------------------------------------------------------------------------------------------
+Backwards Path Generation
+Start: on(c,table),on(b,table),on(a,table),clear(a),clear(b),clear(c)
+Goal: on(c,table),on(b,c),on(a,b),clear(a)
+Path:
+        move-from-table(b,c)
+        move-from-table(a,b)
+
+------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------
+Forward Path Generation
+Start: on(c,table),on(b,table),on(a,table),clear(a),clear(b),clear(c)
+Goal: on(c,table),on(b,c),on(a,b),clear(a)
+Path:
+        move-from-table(a,b)
+        move-block-to(b,a,c)
+        move-from-table(b,a)
+
+------------------------------------------------------------------------------------------

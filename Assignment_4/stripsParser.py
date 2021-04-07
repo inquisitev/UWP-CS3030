@@ -22,13 +22,21 @@ def make_new_states(state, actions, forward = True):
 
             num_replacers = len(condition_vars)
             literals = state.get_literals()
-
+            
 
             for replacers in itertools.product(*[literals for i in range(num_replacers)]):
                 var_map = list(zip(condition_vars, replacers))
 
-                    
-                evals = [state.check_condition(fill_vars_with_literals(pc, var_map)) for pc in before_conditions]
+                conditions = [fill_vars_with_literals(pc, var_map) for pc in before_conditions]
+                evals = [state.check_condition(condition) for condition in conditions]
+
+                action_label = fill_vars_with_literals(action_name, var_map)
+                #print('-'*90)
+                #print(f"state: {state}")
+                #print(f"action: {action_label}")
+                #print('\n'.join([f"{cond} -> {val}" for cond, val in zip(conditions, evals)]))
+                #print('-'*90)
+                #print()
 
                 action_is_valid = all(evals)
                 if action_is_valid: 
@@ -50,12 +58,12 @@ def make_new_states(state, actions, forward = True):
                         added_truths.append(add_effect)
                     resultant_states.append(new_state)
 
-                    print('-'*90)
-                    print(f"Current State: {','.join(state.truths)}")
-                    print(f"Action: {action_label}")
-                    print(f"Adding Truths: {','.join(added_truths)}")
-                    print(f"New State: {','.join(new_state.truths)}")
-                    print('-'*90)
+                    #print('-'*90)
+                    #print(f"Current State: {','.join(state.truths)}")
+                    #print(f"Action: {action_label}")
+                    #print(f"Adding Truths: {','.join(added_truths)}")
+                    #print(f"New State: {','.join(new_state.truths)}")
+                    #print('-'*90)
 
 
         return resultant_states
@@ -143,10 +151,15 @@ class State:
 
         return False
 
-def print_action_to_state(state):
+def print_action_to_state(state, forward = True):
+    actions = []
     while state is not None:
-        print(state.action)
+        actions.append(state.action)
         state = state.parent
+    if not forward:
+        actions = reversed(actions)
+    print('\t' + '\n\t'.join(actions))
+
 
 
 # Use iterative deepening depth first search to find a path from start state to goal state
@@ -185,7 +198,7 @@ def iterative_deepening_depth_first_search(start: State, goal: State, actions, f
 
 
 
-with open("./Assignment_4/blockworld.strips") as stream:
+with open("./blockworld.strips") as stream:
     implementation_dict = yaml.safe_load(stream)
     start = State()
     start.truths = implementation_dict["start"]
@@ -197,11 +210,24 @@ with open("./Assignment_4/blockworld.strips") as stream:
     ns = State()
     ns.truths = [x for x in start.truths]
 
-    print(start in [ns])
 
 
     actions = list(implementation_dict["actions"].items())
+    print('-'*90)
+    print("Backwards Path Generation")
+    print(f"Start: {start}")
+    print(f"Goal: {goal}")
+    print(f"Path:")
     iterative_deepening_depth_first_search(goal, start, actions, forward=False)
-    iterative_deepening_depth_first_search(start, goal, actions, forward=True)
+    print('-'*90)
 
-    #print('\n'.join([str(x) for x in make_new_states(start, actions)]))
+
+
+    print('-'*90)
+    print("Forward Path Generation")
+    print(f"Start: {start}")
+    print(f"Goal: {goal}")
+    print(f"Path:")
+    iterative_deepening_depth_first_search(start, goal, actions, forward=True)
+    print('-'*90)
+
