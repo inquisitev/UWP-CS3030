@@ -1,73 +1,43 @@
-goal:
-    - on(c,table)
-    - on(b,c)
-    - on(a,b)
-    - clear(a)
-    
-
-start:
-    - on(c,table)
-    - on(b,table)
-    - on(a,table)
-    - clear(a)
-    - clear(b)
-    - clear(c)
-
 actions:
-
-
-    move-block-to(BLOCK, FROM, TO):
+    unload_truck(OBJECT, TRUCK):
         preconditions: 
-            - on(BLOCK, FROM)
-            - clear(BLOCK) 
-            - clear(TO)
-            - noteq(BLOCK, table)
-            - noteq(TO, table)
-            - noteq(FROM, table)
-            - noteq(TO, BLOCK)
-            - noteq(BLOCK, FROM)
+            - in_truck(OBJECT, TRUCK),
+            - at_truck(TRUCK, LOCATION)
         postconditions:
-            - on(BLOCK, TO)
-            - clear(FROM)
-            - clear(BLOCK) 
-            - not(on(BLOCK, FROM))
-            - not(clear(TO))
-            - noteq(BLOCK, table)
-            - noteq(TO, table)
-            - noteq(FROM, table)
-            - noteq(TO, BLOCK)
-            - noteq(BLOCK, FROM)
-
-    move-from-table(BLOCK, TO):
+            - not(in_truck(OBJECT, TRUCK))
+            - at_location(OBJECT, LOCATION)
+    drive_truck(TRUCK, FROM, TO):
         preconditions: 
-            - on(BLOCK, table)
-            - clear(BLOCK) 
-            - clear(TO)
-            - noteq(BLOCK, table)
-            - noteq(TO, table)
-            - noteq(TO, BLOCK)
+            - at_truck(TRUCK, FROM), 
+            - same_city(FROM, TO),
         postconditions:
-            - on(BLOCK, TO)
-            - clear(BLOCK)
-            - noteq(BLOCK, table)
-            - noteq(TO, table)
-            - noteq(TO, BLOCK)
-            
-
-
-
-    move-block-to-table(BLOCK, FROM):
+            - not(at_truck(TRUCK, FROM))
+            - at_truck(TRUCK, TO)
+    load_truck(OBJECT, TRUCK):
         preconditions: 
-            - on(BLOCK, FROM)
-            - noteq(FROM, table)
-            - noteq(BLOCK, table)
-            - noteq(BLOCK, FROM)
-            - clear(BLOCK)
+            - at_location(OBJECT, LOCATION)
+            - at_truck(TRUCK, LOCATION)
         postconditions:
-            - clear(FROM)
-            - clear(BLOCK)
-            - on(BLOCK, table)
-            - not(on(BLOCK, FROM))
-            - noteq(FROM, table)
-            - noteq(BLOCK, table)
-            - noteq(BLOCK, FROM)
+            - not(at_location(OBJECT, LOCATION))
+            - in_truck(OBJECT, TRUCK)
+    load_plane(OBJECT, PLANE):
+        preconditions: 
+            - at_location(OBJECT, LOCATION)
+            - at_plane(PLANE, LOCATION)
+        postconditions:
+            - not(at_location(OBJECT, LOCATION))
+            - in_plane(OBJECT, PLANE)
+    unload_plane(OBJECT, PLANE):
+        preconditions: 
+            - in_plane(OBJECT, PLANE)
+            - at_plane(PLANE, LOCATION)
+        postconditions:
+            - not(in_plane(OBJECT, LOCATION))
+            - at_location(OBJECT, LOCATION)
+    fly_plane(PLANE, FROM, TO)
+        preconditions: 
+            - at_plane(PLANE, FROM)
+            - airport(TO)
+        postconditions:
+            - not(at_plane(PLANE, FROM))
+            - at_plane(PLANE, TO)

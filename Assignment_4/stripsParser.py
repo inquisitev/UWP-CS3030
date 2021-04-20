@@ -1,12 +1,18 @@
 import yaml, itertools
 from typing import List
 
+# A varaible is a word that is in all caps. the stmt is the statement that may contain varaibles and the
+# var map is a dictionary mapping each variable to a literal
 def fill_vars_with_literals(stmt, var_map):
     for take, put in var_map:
         stmt = stmt.replace(take,put)
     return stmt.replace(" ", "")
 
 
+# Take the current state and develop a list of all combinations of literals to apply to an action. Apply
+# the literals to that action and see if the conditions that must be present before that action, when variables
+# are replaced with literals, exist in the current truth of STATE. if forward is false, then the postconditions 
+# will be replaced with the preconditions and the state is expected to be the goal state. 
 def make_new_states(state, actions, forward = True):
         resultant_states = []
         applicable_actions = []
@@ -15,14 +21,12 @@ def make_new_states(state, actions, forward = True):
             pre_conditions = transformations["preconditions"]
             post_conditions= transformations["postconditions"]
             (before_conditions,after_conditions) = (pre_conditions, post_conditions) if forward else (post_conditions, pre_conditions)
-            
 
             condition_name, condition_vars = action_name.split('(')
             condition_vars = condition_vars.replace(')', "").replace(" ", "").split(',')
 
             num_replacers = len(condition_vars)
             literals = state.get_literals()
-            
 
             for replacers in itertools.product(*[literals for i in range(num_replacers)]):
                 var_map = list(zip(condition_vars, replacers))
@@ -31,12 +35,6 @@ def make_new_states(state, actions, forward = True):
                 evals = [state.check_condition(condition) for condition in conditions]
 
                 action_label = fill_vars_with_literals(action_name, var_map)
-                #print('-'*90)
-                #print(f"state: {state}")
-                #print(f"action: {action_label}")
-                #print('\n'.join([f"{cond} -> {val}" for cond, val in zip(conditions, evals)]))
-                #print('-'*90)
-                #print()
 
                 action_is_valid = all(evals)
                 if action_is_valid: 
@@ -44,7 +42,7 @@ def make_new_states(state, actions, forward = True):
                     if action_label in applicable_actions:
                         continue
                     applicable_actions.append(action_label)
-                    new_state = state.copy()
+                    new_state = state.mitosis()
                     new_state.action = action_label
                     added_truths = []
                     removed_truths = []
@@ -57,21 +55,14 @@ def make_new_states(state, actions, forward = True):
                         new_state.register_truth(add_effect)
                         added_truths.append(add_effect)
                     resultant_states.append(new_state)
-
-                    #print('-'*90)
-                    #print(f"Current State: {','.join(state.truths)}")
-                    #print(f"Action: {action_label}")
-                    #print(f"Adding Truths: {','.join(added_truths)}")
-                    #print(f"New State: {','.join(new_state.truths)}")
-                    #print('-'*90)
-
-
         return resultant_states
                 
 
 
-
+# A state is really just a list of truths and some tools to evaluate and copy. 
 class State:
+
+    #initialize with an empty list of truths
     def __init__(self):
         self.truths = []
         self.parent = None
@@ -83,15 +74,18 @@ class State:
     def __repr__(self):
         return str(self)
 
-    def copy(self):
+    # Create a direct copy of self and set self to be the parent of the new state. This helps build the graph as it goes.    
+    def mitosis(self):
         state = State()
         state.parent = self
         state.truths = [x for x in self.truths]
         return state
 
+    # Used for set and list interactions.
     def __hash__(self):
         return hash(",".join(self.truths))
 
+    # register a truth. The truth must not already be registered, the truth must not be a negation, and it must not be a negative equality comparison. 
     def register_truth(self, truth):
         truth = truth.replace(' ', '')
         register_conditions = [
@@ -102,16 +96,19 @@ class State:
         if all(register_conditions):
             self.truths.append(truth)
 
+    # remove a truth if it exists
     def remove_truth(self, truth):
         if truth in self.truths:
             self.truths.remove(truth)
     
+    # Equality comparison. States are equal if self is a sub state of another other state.
     def __eq__(self, other):
         def clean_str(string):
             return string.replace(" ", "")
         #return [clean_str(t) for t in self.truths] == [clean_str(t) for t in other.truths]
         return self.is_substate_of(other)
     
+    # if super.truths ⊆ self.truths then self ⊆ super (no that is not backwards). Every truth of the super must be true in the sub, but the sub can have more. 
     def is_substate_of(self, super):
         def clean_str(string):
             return string.replace(" ", "")
@@ -120,6 +117,8 @@ class State:
         all_in =  all(ins)
         return all_in
 
+    # look at all of the truths and extract the literals. return a list of all unique literals in the truth set. If a literal is not present at start, it cannot
+    # be present at end. so make sure that all literals are mentioned atleast once. 
     def get_literals(self):
         literals = set()
         for truth in self.truths:
@@ -129,6 +128,7 @@ class State:
                     literals.add(literal)
         return list(iter(literals))
 
+    # evaluate if the condition is true. Handle standard truths, negated truths, and negated equality conditions.
     def check_condition(self, condition):
         spl = condition.split('(')
         if (len(spl) > 2):
@@ -151,6 +151,7 @@ class State:
 
         return False
 
+# pretty print the traversal from end to start. reversed if forward is false to accomidate goal oriented.
 def print_action_to_state(state, forward = True):
     actions = []
     while state is not None:
@@ -197,7 +198,7 @@ def iterative_deepening_depth_first_search(start: State, goal: State, actions, f
     
 
 
-
+# Main driver portion. 
 with open("./blockworld.strips") as stream:
     implementation_dict = yaml.safe_load(stream)
     start = State()

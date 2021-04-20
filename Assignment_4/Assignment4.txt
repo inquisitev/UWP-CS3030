@@ -20,7 +20,6 @@ Start: on(c,table),on(b,table),on(a,table),clear(a),clear(b),clear(c)
 Goal: on(c,table),on(b,c),on(a,b),clear(a)
 Path:
         move-from-table(a,b)
-        move-block-to(b,a,c)
-        move-from-table(b,a)
+        move-from-table(b,c)
 
 ------------------------------------------------------------------------------------------
