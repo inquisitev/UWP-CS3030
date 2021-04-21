@@ -74,10 +74,15 @@ def extract_features(tweets):
         tweet_character_grams = {n: list(ngrams(tweet['full_text'], n)) for n in range(*CHARACTER_GRAM_RANGE)}
         tweet_emojis = list(emojis.get(tweet['full_text']) ) 
         tweet_hashtags = [x['text'] for x in tweet['entities']['hashtags']]
-        word_grams = {n : word_grams[n] + tweet_word_grams[n] for n in range(*WORD_GRAM_RANGE)}
-        character_grams = {n : character_grams[n] + tweet_character_grams[n] for n in range(*CHARACTER_GRAM_RANGE)}
-        hashtags = hashtags + tweet_hashtags
-        emoji_list = emoji_list + tweet_emojis
+        for n in range(*WORD_GRAM_RANGE):
+            for val in tweet_word_grams[n]:
+                word_grams[n].append(val)
+        for n in range(*CHARACTER_GRAM_RANGE):
+            for val in tweet_character_grams[n]:
+                character_grams[n].append(val)
+
+        hashtags[0:0] = tweet_hashtags
+        emoji_list[0:0] =  tweet_emojis
 
 
     return {
@@ -93,12 +98,14 @@ def save_features_to_file(features, output_path):
     out_as_json = {
         "word_grams": {n: [x[0] for x in Counter(wg[n]).most_common(SAMPLE_COUNT)] for n in range(*WORD_GRAM_RANGE)},
         "character_grams": {n: [x[0] for x in Counter(cg[n]).most_common(SAMPLE_COUNT)] for n in range(*CHARACTER_GRAM_RANGE)},
-        "emojis": [x[0] for x in Counter(el).most_common(SAMPLE_COUNT)],
+        "emoji_list": [x[0] for x in Counter(el).most_common(SAMPLE_COUNT)],
         "hashtags": [x[0] for x in Counter(h).most_common(SAMPLE_COUNT)],
     }
 
     with open(output_path, 'w+') as featureFile:
         featureFile.write(json.dumps(out_as_json))
+
+    return out_as_json
 
 def evaluate_tweet_features(tweet, features):
 
@@ -136,8 +143,9 @@ def make_processed_data_set(tweets, features, output_file):
 
 tweets = extract_tweets(HYDRATED_TWEETS_FILE)
 features = extract_features(tweets)
-save_features_to_file(features, FEATURES_DATA_SET)
+features = save_features_to_file(features, FEATURES_DATA_SET)
 processed_tweets = process_tweets(tweets)
 make_processed_data_set(processed_tweets, features,DATA_SET)
+print('done')
 
 
