@@ -10,7 +10,7 @@ POPULAR_THRESHOLD = 1000
 SAMPLE_COUNT = 50
 WORD_GRAM_RANGE = (1,6)
 CHARACTER_GRAM_RANGE = (2,6)
-DELIMINATOR = '-|-'
+DELIMINATOR = ','
 HYDRATED_TWEETS_FILE = "/Users/trevorkeegan/development/UWP-CS3030/Assignment_5/tweets_hydrated.jsonl"
 FEATURES_DATA_SET = "/Users/trevorkeegan/development/UWP-CS3030/Assignment_5/features_data_set.json"
 DATA_SET = "/Users/trevorkeegan/development/UWP-CS3030/Assignment_5/data_set.dsv"
@@ -111,15 +111,20 @@ def evaluate_tweet_features(tweet, features):
 
     return {
         "tweet": tweet,
-        "NWordGramsFound": {n: any(x in features['word_grams'][n] for x in tweet['word_grams']) for n in range(*WORD_GRAM_RANGE)},
-        "NCharacterGramsFound": {n: any(x in features['character_grams'][n] for x in tweet['character_grams'])for n in range(*CHARACTER_GRAM_RANGE)},
+        "NWordGramsFound": {n: any(x in features['word_grams'][n] for x in tweet['word_grams'][n]) for n in range(*WORD_GRAM_RANGE)},
+        "NCharacterGramsFound": {n: any(x in features['character_grams'][n] for x in tweet['character_grams'][n])for n in range(*CHARACTER_GRAM_RANGE)},
         "EmojisFound": any(x in features['emoji_list'] for x in tweet['emojis']),
         "Hashtags": any(x in features['hashtags'] for x in tweet['hash_tags']), 
 
     }
 
 def make_processed_data_set(tweets, features, output_file):
+    headders = ["tweet ID", "Popular"] + [f"{n} Word Gram" for n in range(*WORD_GRAM_RANGE)]+[f"{n} Char Gram" for n in range(*CHARACTER_GRAM_RANGE)]
+    headders.append("Emojis")
+    headders.append("Hashtags")
     with open(output_file, 'w+') as processing_file:
+        
+        processing_file.write(DELIMINATOR.join(headders) + '\n')
         for _, tweet in tweets.items():
             evaluated = evaluate_tweet_features(tweet, features)
             out = []
