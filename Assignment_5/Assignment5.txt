@@ -1,0 +1,40 @@
+
+1.) I decided to use a COVID-19 tweet data set from https://github.com/thepanacealab/covid19_twitter.
+        These data sets come as dehydrated tweets, so an ID, date, geo-coords and other information that is not useful
+        So this data must be rehydrated using the twarc command line tool https://scholarslab.github.io/learn-twarc/01-quick-start.html.
+
+        rehydrated tweets in tweets_hydrated.jsonl
+
+        I ranked each tweet as popular or not popular based on its retweet count after looking at the statistical distribution I decided
+        that 1000 retweets was a good threshold to say that a tweet was popular. 
+
+2.) The most frequent features are saved into features_data_set.json, 
+        the data that is provided to the machine learning algorithm is placed into data_set.csv
+
+3.) For machine learning algorithms i chose to use a decision tree classifier, Random Forest Classifier, and Ada boost Classifier
+        with results as following
+
+        ------------------------------------------------------------------------------------------
+        Decision Tree Classifier
+        Scores: 95.62043795620438%, 91.24087591240875%, 91.24087591240875%, 80.43795620437956%, 88.17518248175182%, 85.25547445255475%, 82.18978102189782%, 82.91970802919708%, 85.83941605839416%, 85.83941605839416
+        Average Score: 86.87591240875912%
+        ------------------------------------------------------------------------------------------
+
+        ------------------------------------------------------------------------------------------
+        Random Forest Classifier
+        Scores: 95.62043795620438%, 91.24087591240875%, 91.24087591240875%, 80.43795620437956%, 88.17518248175182%, 85.40145985401459%, 82.18978102189782%, 83.06569343065694%, 85.83941605839416%, 85.83941605839416
+        Average Score: 86.90510948905109%
+        ------------------------------------------------------------------------------------------
+
+        ------------------------------------------------------------------------------------------
+        Ada Boost Classifier
+        Scores: 98.3941605839416%, 91.24087591240875%, 90.8029197080292%, 78.97810218978101%, 87.00729927007299%, 83.64963503649635%, 81.89781021897811%, 82.77372262773723%, 85.98540145985402%, 85.40145985401459
+        Average Score: 86.61313868613138%
+        ------------------------------------------------------------------------------------------
+
+Libs used:
+    pandas 
+    numpy 
+    nltk
+    sklearn
+    statistics
